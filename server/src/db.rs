@@ -177,7 +177,10 @@ impl Database {
             let skill_levels: HashMap<String, u8> = serde_json::from_str(&skill_levels_str).unwrap_or_default();
 
             let inventory_str: String = row.get(24).unwrap_or_else(|_| "[]".to_string());
-            let inventory: Vec<Option<Item>> = serde_json::from_str(&inventory_str).unwrap_or_else(|_| vec![None; 20]);
+            let mut inventory: Vec<Option<Item>> = serde_json::from_str(&inventory_str).unwrap_or_else(|_| vec![None; 64]);
+            if inventory.len() < 64 {
+                inventory.resize(64, None);
+            }
 
             let weapon_str: Option<String> = row.get(25).ok();
             let equipped_weapon: Option<Item> = weapon_str.and_then(|s| serde_json::from_str(&s).ok());

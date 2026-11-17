@@ -53,6 +53,7 @@ export class UIController {
   private currentQuests: Quest[] = [];
   private currentYang: number = 250;
   private selectedUpgradeSlot: number | null = null;
+  private currentInvFilter: string = 'all';
 
   // Estado de Almacén y Mercado Central
   private currentStash: (Item | null)[] = [];
@@ -1173,6 +1174,19 @@ export class UIController {
     document.getElementById('btn-close-inventory')?.addEventListener('click', () => {
       SoundManager.getInstance().playButtonClick();
       this.toggleInventory();
+    });
+
+    // Pestañas de Filtros de Categoría del Inventario Dofus (Todo, Armas, Equipamiento, Consumibles, Recursos)
+    const catIcons = document.querySelectorAll('.dofus-cat-icon');
+    catIcons.forEach((icon) => {
+      icon.addEventListener('click', (e) => {
+        catIcons.forEach((el) => el.classList.remove('selected'));
+        const target = e.currentTarget as HTMLElement;
+        target.classList.add('selected');
+        this.currentInvFilter = target.dataset.cat || 'all';
+        SoundManager.getInstance().playButtonClick();
+        this.renderInventory();
+      });
     });
 
     // Abrir Misiones / Cerrar NPC
@@ -2349,6 +2363,18 @@ export class UIController {
       }
     }
 
+    // Actualizar medidor de Pods / Carga de inventario
+    const filledCount = this.currentInventory.filter(Boolean).length;
+    const podsFill = document.getElementById('dofus-pods-fill');
+    const podsText = document.getElementById('dofus-pods-text');
+    if (podsFill && podsText) {
+      const podsUsed = filledCount * 15;
+      const maxPods = 1000;
+      const pct = Math.min(100, Math.round((podsUsed / maxPods) * 100));
+      podsFill.style.width = `${pct}%`;
+      podsText.innerText = `${podsUsed} / ${maxPods}`;
+    }
+
     this.renderInventory();
     this.updateQuestTracker();
   }
@@ -2358,17 +2384,57 @@ export class UIController {
     if (!grid) return;
     grid.innerHTML = '';
 
+    // Mapeo de ranuras según el filtro activo (all, weapon, armor, potion, resource)
+    interface SlotData {
+      item: Item | null;
+      originalIndex: number;
+    }
+
+    const slotsToRender: SlotData[] = [];
+
+    if (this.currentInvFilter === 'all') {
+      for (let i = 0; i < 64; i++) {
+        slotsToRender.push({
+          item: this.currentInventory[i] || null,
+          originalIndex: i,
+        });
+      }
+    } else {
+      const filtered: SlotData[] = [];
+      for (let i = 0; i < this.currentInventory.length; i++) {
+        const item = this.currentInventory[i];
+        if (!item) continue;
+        let matches = false;
+        if (this.currentInvFilter === 'weapon' && item.item_type === 'Weapon') matches = true;
+        if (this.currentInvFilter === 'armor' && item.item_type === 'Armor') matches = true;
+        if (this.currentInvFilter === 'potion' && item.item_type === 'Consumable') matches = true;
+        if (this.currentInvFilter === 'resource' && (item.item_type === 'Material' || item.item_type === 'SkillBook')) matches = true;
+
+        if (matches) {
+          filtered.push({ item, originalIndex: i });
+        }
+      }
+
+      for (let i = 0; i < 64; i++) {
+        if (i < filtered.length) {
+          slotsToRender.push(filtered[i]);
+        } else {
+          slotsToRender.push({ item: null, originalIndex: -1 });
+        }
+      }
+    }
+
     // Cuadrícula 8x8 (64 ranuras) estilo Dofus 1.29
-    for (let i = 0; i < 64; i++) {
-      const item = this.currentInventory[i] || null;
+    for (let slotIdx = 0; slotIdx < 64; slotIdx++) {
+      const { item, originalIndex } = slotsToRender[slotIdx];
       const slot = document.createElement('div');
       slot.className = 'dofus-grid-slot';
 
-      if (item) {
+      if (item && originalIndex >= 0) {
         slot.draggable = true;
         slot.style.cursor = 'grab';
         slot.addEventListener('dragstart', (e) => {
-          (e as DragEvent).dataTransfer?.setData('application/dotin-item', JSON.stringify({ index: i, item }));
+          (e as DragEvent).dataTransfer?.setData('application/dotin-item', JSON.stringify({ index: originalIndex, item }));
           (e as DragEvent).dataTransfer?.setData('text/plain', `item:${item.id}`);
         });
 
@@ -2382,7 +2448,7 @@ export class UIController {
         slot.addEventListener('click', () => {
           document.querySelectorAll('.dofus-grid-slot').forEach((s) => s.classList.remove('selected'));
           slot.classList.add('selected');
-          this.displayItemDetail(item, i);
+          this.displayItemDetail(item, originalIndex);
         });
       } else {
         slot.style.opacity = '0.35';
@@ -2391,7 +2457,7 @@ export class UIController {
       grid.appendChild(slot);
     }
 
-    // Por defecto mostrar el arma equipada en el detalle
+    // Por defecto mostrar el arma equipada en el detalle si ninguna casilla está seleccionada
     if (this.currentWeapon) {
       this.displayItemDetail(this.currentWeapon, -1);
     }
@@ -2406,14 +2472,14 @@ export class UIController {
     const btnAct = document.getElementById('btn-dofus-action');
 
     if (nameEl) nameEl.innerText = item.name;
-    if (lvlEl) lvlEl.innerText = `Niv. ${item.upgrade_level || 1}`;
+    if (lvlEl) lvlEl.innerText = item.upgrade_level > 0 ? `+${item.upgrade_level}` : (item.item_type === 'Material' ? 'Material' : 'Niv. 1');
     if (iconEl) iconEl.innerHTML = renderItemIcon(item.icon, 36);
 
     let statBonus = '';
     if (item.attack_bonus) statBonus += `+${item.attack_bonus} Ataque Físico `;
     if (item.defense_bonus) statBonus += `+${item.defense_bonus} Defensa `;
     if (item.hp_bonus) statBonus += `+${item.hp_bonus} HP `;
-    if (bonusEl) bonusEl.innerText = statBonus || 'Sin efectos mágicos';
+    if (bonusEl) bonusEl.innerText = statBonus || (item.item_type === 'Material' ? 'Material para Forja y Alquimia' : 'Sin efectos mágicos');
 
     const durVal = item.durability ?? 100;
     const maxDur = item.max_durability ?? 100;
@@ -2426,11 +2492,21 @@ export class UIController {
 
     if (btnAct) {
       if (slotIndex >= 0) {
-        btnAct.style.display = 'block';
-        btnAct.innerText = item.item_type === 'Consumable' ? 'Usar Objeto' : 'Equipar';
-        btnAct.onclick = () => {
-          this.handleInventorySlotClick(slotIndex, item);
-        };
+        if (item.item_type === 'Consumable') {
+          btnAct.style.display = 'block';
+          btnAct.innerText = 'Usar Poción';
+          btnAct.onclick = () => this.handleInventorySlotClick(slotIndex, item);
+        } else if (item.item_type === 'SkillBook') {
+          btnAct.style.display = 'block';
+          btnAct.innerText = 'Leer Libro';
+          btnAct.onclick = () => this.handleInventorySlotClick(slotIndex, item);
+        } else if (item.item_type === 'Weapon' || item.item_type === 'Armor') {
+          btnAct.style.display = 'block';
+          btnAct.innerText = 'Equipar';
+          btnAct.onclick = () => this.handleInventorySlotClick(slotIndex, item);
+        } else {
+          btnAct.style.display = 'none';
+        }
       } else {
         btnAct.style.display = 'none';
       }
@@ -2440,6 +2516,10 @@ export class UIController {
   private handleInventorySlotClick(slotIndex: number, item: Item): void {
     if (item.item_type === 'Consumable') {
       if (confirm(`¿Quieres usar [${item.name}] para recuperar ${item.hp_bonus} HP?`)) {
+        this.onUseItemRequested?.(slotIndex);
+      }
+    } else if (item.item_type === 'SkillBook') {
+      if (confirm(`¿Quieres intentar leer [${item.name}] para mejorar tu técnica marcial?`)) {
         this.onUseItemRequested?.(slotIndex);
       }
     } else if (item.item_type === 'Weapon' || item.item_type === 'Armor') {

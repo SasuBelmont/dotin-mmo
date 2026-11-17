@@ -1562,11 +1562,20 @@ class GameApp {
       // 1. Colisión de Agua de Metin2 (z = 47.0..57.0):
       // No se puede caminar sobre el agua; el jugador solo puede cruzar por los dos puentes o pisar el muelle de pesca
       if (z >= 47.0 && z <= 57.0) {
-        const onBridge1 = Math.abs(x - 0) <= 2.8; // Puente Central
-        const onBridge2 = Math.abs(x - 32) <= 2.8; // Puente Este
-        const onPier = Math.abs(x - (-8)) <= 2.2 && z <= 51.5; // Muelle de pesca
+        const nearBridge1 = Math.abs(x - 0) <= 3.2; // Puente Central
+        const nearBridge2 = Math.abs(x - 32) <= 3.2; // Puente Este
+        const nearPier = Math.abs(x - (-8)) <= 2.6 && z <= 51.5; // Muelle de pesca
 
-        if (!onBridge1 && !onBridge2 && !onPier) {
+        if (nearBridge1) {
+          // Barandillas de madera que impiden caer al agua lateralmente (sin teletransporte brusco en Z)
+          x = Math.max(-2.5, Math.min(2.5, x));
+        } else if (nearBridge2) {
+          x = Math.max(32 - 2.5, Math.min(32 + 2.5, x));
+        } else if (nearPier) {
+          x = Math.max(-8 - 2.0, Math.min(-8 + 2.0, x));
+          z = Math.min(51.5, z);
+        } else {
+          // Detener en la orilla si el jugador entra al agua desde la hierba
           if (z < 52.0) {
             z = 46.9; // Detener en la orilla norte
           } else {
@@ -1640,6 +1649,12 @@ class GameApp {
       this.ui.hideGatheringProgress();
       if (charInst) {
         charInst.playAnimation('idle', 0.15);
+      }
+      if (this.myWorldPlayer) {
+        this.network.send({
+          type: 'WorldSyncPos',
+          payload: { pos: this.myWorldPlayer.pos, target: undefined },
+        });
       }
       this.network.send({
         type: 'GatherResource',

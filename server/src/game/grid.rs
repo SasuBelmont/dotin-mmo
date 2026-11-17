@@ -36,17 +36,12 @@ impl BattleMap {
         for y in 0..MAP_HEIGHT {
             for x in 0..MAP_WIDTH {
                 // Determine obstacle layout:
-                // Piedra Metin en el centro (x=5..6, y=5..6)
-                let is_metin_stone = (x == 5 && y == 5) || (x == 6 && y == 5) || (x == 5 && y == 6) || (x == 6 && y == 6);
-                
-                // Rocas y árboles estratégicos
+                // Rocas y árboles estratégicos en los flancos tácticos (sin obstrucciones invisibles en el centro)
                 let is_rock = (x == 2 && y == 3) || (x == 9 && y == 8) || (x == 3 && y == 9) || (x == 8 && y == 2);
                 let is_tree = (x == 2 && y == 8) || (x == 9 && y == 3) || (x == 1 && y == 5) || (x == 10 && y == 6);
                 let is_path = x == y || (x + y == MAP_WIDTH - 1);
 
-                let (tile_type, is_walkable, blocks_los) = if is_metin_stone {
-                    (TileType::MetinStone, false, true)
-                } else if is_rock {
+                let (tile_type, is_walkable, blocks_los) = if is_rock {
                     (TileType::Rock, false, true)
                 } else if is_tree {
                     (TileType::Tree, false, true)

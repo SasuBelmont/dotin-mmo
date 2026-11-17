@@ -444,7 +444,7 @@ impl WorldManager {
             CharacterClass::Shaman => 120,
         };
 
-        let mut inventory: Vec<Option<Item>> = vec![None; 20];
+        let mut inventory: Vec<Option<Item>> = vec![None; 64];
         let (weapon_id, weapon_name, weapon_icon, weapon_desc) = match class {
             CharacterClass::Warrior => (
                 "starter_sword_warrior".to_string(),
@@ -2742,8 +2742,21 @@ impl WorldManager {
             }
         };
 
-        let free_slot = player.inventory.iter().position(|s| s.is_none()).ok_or("¡Inventario lleno! Guarda objetos en tu Almacén.")?;
-        player.inventory[free_slot] = Some(item.clone());
+        let free_slots_count = player.inventory.iter().filter(|s| s.is_none()).count();
+        if free_slots_count < count as usize {
+            return Err("¡Inventario lleno! Guarda objetos en tu Almacén.".to_string());
+        }
+
+        for i in 0..count {
+            if let Some(free_slot) = player.inventory.iter().position(|s| s.is_none()) {
+                let mut single_item = item.clone();
+                if i > 0 {
+                    let next_id = ITEM_COUNTER.fetch_add(1, Ordering::Relaxed);
+                    single_item.id = format!("{}_{}", item.id, next_id);
+                }
+                player.inventory[free_slot] = Some(single_item);
+            }
+        }
 
         node.is_depleted = true;
         node.respawn_timer = 25.0;

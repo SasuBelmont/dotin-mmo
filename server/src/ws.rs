@@ -788,6 +788,16 @@ async fn handle_client_message(client_id: &str, msg: ClientMessage, app_state: &
                     if let Some(sync) = world.get_inventory_sync(client_id) {
                         let _ = app_state.tx.send(sync);
                     }
+                    if let Some(player) = world.players.get(client_id) {
+                        if player.account_id.is_some() {
+                            let p_clone = player.clone();
+                            let db = app_state.db.clone();
+                            tokio::spawn(async move {
+                                let mut db_lock = db.lock().await;
+                                let _ = db_lock.save_character(&p_clone);
+                            });
+                        }
+                    }
                     let _ = app_state.tx.send(ServerMessage::WorldUpdate {
                         players: world.players.values().cloned().collect(),
                         mobs: world.mobs.clone(),
@@ -811,6 +821,16 @@ async fn handle_client_message(client_id: &str, msg: ClientMessage, app_state: &
                     let _ = app_state.tx.send(ServerMessage::ChatBroadcast { message: msg });
                     if let Some(sync) = world.get_inventory_sync(client_id) {
                         let _ = app_state.tx.send(sync);
+                    }
+                    if let Some(player) = world.players.get(client_id) {
+                        if player.account_id.is_some() {
+                            let p_clone = player.clone();
+                            let db = app_state.db.clone();
+                            tokio::spawn(async move {
+                                let mut db_lock = db.lock().await;
+                                let _ = db_lock.save_character(&p_clone);
+                            });
+                        }
                     }
                 }
                 Err(err) => {
