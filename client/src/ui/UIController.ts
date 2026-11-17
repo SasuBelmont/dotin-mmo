@@ -554,7 +554,7 @@ export class UIController {
               <div class="dofus-equip-slot" id="equip-slot-amulet" title="Amuleto">📿</div>
               <div class="dofus-equip-slot" id="equip-slot-ring1" title="Anillo 1">💍</div>
 
-              <div class="dofus-equip-slot" id="equip-slot-weapon" title="Arma (Espada +0)">🗡️</div>
+              <div class="dofus-equip-slot" id="equip-slot-weapon" title="Arma Principal">🗡️</div>
               <div class="dofus-equip-slot" id="equip-slot-shield" title="Escudo">🛡️</div>
               <div class="dofus-equip-slot" id="equip-slot-ring2" title="Anillo 2">💍</div>
 
@@ -582,14 +582,14 @@ export class UIController {
           <!-- Tarjeta de Detalle del Objeto Seleccionado -->
           <div class="dofus-item-detail-card" id="dofus-item-detail">
             <div class="dofus-item-detail-header">
-              <span id="dofus-detail-name">Espada +0</span>
-              <span id="dofus-detail-level">Niv. 1</span>
+              <span id="dofus-detail-name">Arma</span>
+              <span id="dofus-detail-level">-</span>
             </div>
             <div class="dofus-item-detail-body">
               <div class="dofus-item-detail-icon" id="dofus-detail-icon">🗡️</div>
               <div class="dofus-item-detail-stats">
-                <div style="font-weight: bold; color: #15803d; margin-bottom: 2px;" id="dofus-detail-bonus">+12 Daño Físico</div>
-                <div style="font-size: 9px; color: #666;" id="dofus-detail-desc">Auténtica espada inicial de novato forjada en la Aldea 1 de Metin2.</div>
+                <div style="font-weight: bold; color: #15803d; margin-bottom: 2px;" id="dofus-detail-bonus">-</div>
+                <div style="font-size: 9px; color: #666;" id="dofus-detail-desc">Arma equipada en la mano principal.</div>
                 <div style="margin-top: 4px; display: flex; gap: 4px;">
                   <button id="btn-dofus-action" class="btn btn-secondary" style="display: none; padding: 2px 6px; font-size: 9px;">Acción</button>
                   <button id="btn-unequip-weapon" class="btn btn-secondary" style="display: none; padding: 2px 6px; font-size: 9px;">Desequipar</button>
@@ -1059,7 +1059,8 @@ export class UIController {
             </div>
           </div>
 
-          <button class="btn btn-start" id="btn-char-enter" style="width: 100%; padding: 12px; font-size: 14px; margin-bottom: 10px;">ENTRAR AL REINO</button>
+          <button class="btn btn-start" id="btn-char-enter" style="width: 100%; padding: 12px; font-size: 14px; margin-bottom: 8px;">ENTRAR AL REINO</button>
+          <button class="btn" id="btn-char-new" style="width: 100%; padding: 8px; font-size: 12px; margin-bottom: 8px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; cursor: pointer;">✨ CREAR NUEVO PERSONAJE</button>
           <button class="btn" id="btn-char-logout" style="width: 100%; padding: 8px; font-size: 12px; background: rgba(255,255,255,0.08); color: #cbd5e1; border: 1px solid #555; cursor: pointer;">CAMBIAR DE CUENTA</button>
         </div>
 
@@ -1076,7 +1077,7 @@ export class UIController {
 
             <div class="form-group" style="margin-bottom: 6px;">
               <label class="form-label">Nombre de tu Héroe</label>
-              <input type="text" class="input-text" id="input-hero-name" value="Héroe_1" />
+              <input type="text" class="input-text" id="input-hero-name" value="Guerrero_1" placeholder="Nombre de tu héroe" />
             </div>
 
             <div class="form-group" style="margin-bottom: 6px;">
@@ -1113,7 +1114,7 @@ export class UIController {
               </div>
             </div>
 
-            <div style="font-size: 11px; color: #ffd700; margin-top: 4px; background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 6px; border-left: 3px solid #ffd700;">
+            <div id="creator-starter-weapon-hint" style="font-size: 11px; color: #ffd700; margin-top: 4px; background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 6px; border-left: 3px solid #ffd700;">
               🗡️ Arma inicial: <strong>Espada +0</strong> equipada en mano
             </div>
 
@@ -1599,6 +1600,14 @@ export class UIController {
       }
     });
 
+    // Selección de Personaje Guardado: Crear Nuevo Personaje (cambiar de héroe / clase)
+    document.getElementById('btn-char-new')?.addEventListener('click', () => {
+      if (this.currentAccountId !== null) {
+        this.showCharacterCreator(this.currentAccountId, this.currentUsername);
+        SoundManager.getInstance().playButtonClick();
+      }
+    });
+
     // Selección de Personaje Guardado: Cambiar de Cuenta
     document.getElementById('btn-char-logout')?.addEventListener('click', () => {
       const loginCard = document.getElementById('homescreen-login-card');
@@ -1621,6 +1630,20 @@ export class UIController {
       SoundManager.getInstance().playButtonClick();
     });
 
+    const updateStarterWeaponHint = (cls: CharacterClass) => {
+      const hint = document.getElementById('creator-starter-weapon-hint');
+      if (!hint) return;
+      if (cls === 'Shaman') {
+        hint.innerHTML = '🪭 Arma inicial: <strong>Abanico +0</strong> equipado en mano';
+      } else if (cls === 'Ninja') {
+        hint.innerHTML = '🗡️ Arma inicial: <strong>Dagas +0</strong> equipadas en mano';
+      } else if (cls === 'Sura') {
+        hint.innerHTML = '🗡️ Arma inicial: <strong>Espada +0 (Sura)</strong> equipada en mano';
+      } else {
+        hint.innerHTML = '🗡️ Arma inicial: <strong>Espada +0 (Guerrero)</strong> equipada en mano';
+      }
+    };
+
     // Creador: Selección de Clase
     document.querySelectorAll('#creator-class-pills .creator-pill').forEach((pill) => {
       pill.addEventListener('click', () => {
@@ -1628,6 +1651,16 @@ export class UIController {
         pill.classList.add('selected');
         this.selectedClass = (pill.getAttribute('data-class') || 'Warrior') as CharacterClass;
         this.creatorPreview?.setCharacter(this.selectedClass, this.selectedOutfit, this.selectedGender);
+        updateStarterWeaponHint(this.selectedClass);
+
+        const nameInput = document.getElementById('input-hero-name') as HTMLInputElement;
+        if (nameInput) {
+          const randSuffix = Math.floor(100 + Math.random() * 900);
+          if (this.selectedClass === 'Shaman') nameInput.value = `Chaman_${randSuffix}`;
+          else if (this.selectedClass === 'Ninja') nameInput.value = `Ninja_${randSuffix}`;
+          else if (this.selectedClass === 'Sura') nameInput.value = `Sura_${randSuffix}`;
+          else nameInput.value = `Guerrero_${randSuffix}`;
+        }
         SoundManager.getInstance().playButtonClick();
       });
     });
@@ -1667,7 +1700,8 @@ export class UIController {
     // Botón Entrar al Juego / Crear Personaje
     document.getElementById('btn-enter-game')?.addEventListener('click', () => {
       const nameInput = document.getElementById('input-hero-name') as HTMLInputElement;
-      const name = nameInput.value.trim() || 'Héroe_1';
+      const randSuffix = Math.floor(100 + Math.random() * 900);
+      const name = nameInput.value.trim() || `Heroe_${randSuffix}`;
       const creatorErrBox = document.getElementById('creator-error-msg');
 
       if (name.length < 3) {
@@ -1678,13 +1712,12 @@ export class UIController {
         return;
       }
 
-      const homescreen = document.getElementById('dotin-homescreen');
-      if (homescreen) homescreen.style.display = 'none';
-
-      if (this.creatorPreview) {
-        this.creatorPreview.destroy();
-        this.creatorPreview = null;
+      const enterBtn = document.getElementById('btn-enter-game') as HTMLButtonElement | null;
+      if (enterBtn) {
+        enterBtn.disabled = true;
+        enterBtn.innerText = 'CONECTANDO AL REINO...';
       }
+      if (creatorErrBox) creatorErrBox.style.display = 'none';
 
       nameInput.blur();
       (document.activeElement as HTMLElement)?.blur();
@@ -1858,6 +1891,35 @@ export class UIController {
         this.creatorPreview = new CharacterPreview(previewContainer);
         this.creatorPreview.setCharacter(this.selectedClass, this.selectedOutfit, this.selectedGender);
       }
+    }
+  }
+
+  public dismissHomescreen(): void {
+    const homescreen = document.getElementById('dotin-homescreen');
+    if (homescreen) homescreen.style.display = 'none';
+    if (this.creatorPreview) {
+      this.creatorPreview.destroy();
+      this.creatorPreview = null;
+    }
+    const enterBtn = document.getElementById('btn-enter-game') as HTMLButtonElement | null;
+    if (enterBtn) {
+      enterBtn.disabled = false;
+      enterBtn.innerText = '¡COMENZAR AVENTURA!';
+    }
+  }
+
+  public showCreatorError(msg: string): void {
+    const creatorErrBox = document.getElementById('creator-error-msg');
+    if (creatorErrBox) {
+      creatorErrBox.textContent = msg;
+      creatorErrBox.style.display = 'block';
+    }
+    const homescreen = document.getElementById('dotin-homescreen');
+    if (homescreen) homescreen.style.display = 'flex';
+    const enterBtn = document.getElementById('btn-enter-game') as HTMLButtonElement | null;
+    if (enterBtn) {
+      enterBtn.disabled = false;
+      enterBtn.innerText = '¡COMENZAR AVENTURA!';
     }
   }
 

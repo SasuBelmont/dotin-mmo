@@ -556,6 +556,34 @@ impl WorldManager {
             durability: 100,
             max_durability: 100,
         });
+        inventory[5] = Some(Item {
+            id: "starter_axe".to_string(),
+            name: "Hacha de Leñador".to_string(),
+            item_type: ItemType::Material,
+            upgrade_level: 0,
+            attack_bonus: 2,
+            defense_bonus: 0,
+            hp_bonus: 0,
+            buy_price: 150,
+            icon: "🪓".to_string(),
+            description: "Herramienta para talar madera y sauces en los bosques.".to_string(),
+            durability: 100,
+            max_durability: 100,
+        });
+        inventory[6] = Some(Item {
+            id: "starter_rod".to_string(),
+            name: "Caña de Pescar".to_string(),
+            item_type: ItemType::Material,
+            upgrade_level: 0,
+            attack_bonus: 1,
+            defense_bonus: 0,
+            hp_bonus: 0,
+            buy_price: 150,
+            icon: "🎣".to_string(),
+            description: "Herramienta de pesca para capturar carpas en el río del valle.".to_string(),
+            durability: 100,
+            max_durability: 100,
+        });
 
         let quests = vec![
             Quest {

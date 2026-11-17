@@ -347,7 +347,6 @@ class GameApp {
     };
 
     this.ui.onSelectCharacterRequested = (accountId, name) => {
-      this.isInGame = true;
       SoundManager.getInstance().playOverworldBGM();
       this.keysPressed.clear();
       this.network.send({
@@ -357,7 +356,6 @@ class GameApp {
     };
 
     this.ui.onCreateCharacterRequested = (accountId, name, characterClass, gender, outfit, team) => {
-      this.isInGame = true;
       SoundManager.getInstance().playOverworldBGM();
       this.keysPressed.clear();
       if (this.myWorldPlayer) {
@@ -917,11 +915,17 @@ class GameApp {
           this.ui.addChatMessage(msg.payload.message);
           break;
 
-        case 'ActionError':
+        case 'ActionError': {
+          const homescreen = document.getElementById('dotin-homescreen');
+          if (homescreen && homescreen.style.display !== 'none') {
+            this.isInGame = false;
+            this.ui.showCreatorError(msg.payload.message);
+          }
           if (!msg.payload.message.includes('Destino inalcanzable')) {
             this.ui.addChatMessage(`⚠️ ${msg.payload.message}`);
           }
           break;
+        }
 
         case 'NPCDialog':
           this.ui.showNPCDialog(msg.payload);
@@ -939,6 +943,8 @@ class GameApp {
           if (msg.payload.player_id && msg.payload.player_id !== this.myPlayerId) {
             break;
           }
+          this.isInGame = true;
+          this.ui.dismissHomescreen();
           this.ui.syncInventory(msg.payload);
           if (this.myWorldPlayer) {
             this.myWorldPlayer.yang = msg.payload.yang;

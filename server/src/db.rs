@@ -253,22 +253,23 @@ impl Database {
             return Err("El nombre solo puede contener letras, números y guión bajo (_).".to_string());
         }
 
-        // Verificar si la cuenta ya tiene un personaje (límite 1 ahora mismo)
+        // Si la cuenta ya tiene un personaje creado, lo reemplazamos limpiamente para permitir re-crear
         let mut stmt = self.conn.prepare("SELECT COUNT(*) FROM characters WHERE account_id = ?")
             .map_err(|e| e.to_string())?;
         let count: i64 = stmt.query_row(params![account_id], |row| row.get(0))
             .map_err(|e| e.to_string())?;
         if count > 0 {
-            return Err("Esta cuenta ya tiene un personaje creado.".to_string());
+            let _ = self.conn.execute("DELETE FROM characters WHERE account_id = ?", params![account_id]);
         }
 
-        // Verificar si el nombre ya está en uso
-        let mut stmt_name = self.conn.prepare("SELECT COUNT(*) FROM characters WHERE name = ? COLLATE NOCASE")
+        // Verificar si el nombre ya está en uso por OTRA cuenta
+        let mut stmt_name = self.conn.prepare("SELECT account_id FROM characters WHERE name = ? COLLATE NOCASE")
             .map_err(|e| e.to_string())?;
-        let count_name: i64 = stmt_name.query_row(params![name], |row| row.get(0))
-            .map_err(|e| e.to_string())?;
-        if count_name > 0 {
-            return Err("El nombre de personaje ya está en uso por otro jugador.".to_string());
+        let existing_acc: Result<i64, _> = stmt_name.query_row(params![name], |row| row.get(0));
+        if let Ok(other_acc) = existing_acc {
+            if other_acc != account_id {
+                return Err(format!("El nombre '{}' ya está en uso por otro jugador. Por favor elige otro.", name));
+            }
         }
 
         let kingdom = if team == 0 { "Jinno".to_string() } else { "Shinsoo".to_string() };
@@ -321,7 +322,7 @@ impl Database {
             max_durability: 100,
         };
 
-        let mut inventory: Vec<Option<Item>> = vec![None; 20];
+        let mut inventory: Vec<Option<Item>> = vec![None; 64];
         inventory[0] = Some(Item {
             id: "starter_pot_1".to_string(),
             name: "Poción Roja (P)".to_string(),
@@ -378,6 +379,7 @@ impl Database {
             durability: 100,
             max_durability: 100,
         });
+        // Herramientas iniciales de recolección (Minería, Tala y Pesca)
         inventory[4] = Some(Item {
             id: "starter_pickaxe".to_string(),
             name: "Pico de Minero".to_string(),
@@ -389,6 +391,34 @@ impl Database {
             buy_price: 150,
             icon: "/assets/icons/item/29101.png".to_string(),
             description: "Herramienta básica para extraer minerales de las vetas del valle.".to_string(),
+            durability: 100,
+            max_durability: 100,
+        });
+        inventory[5] = Some(Item {
+            id: "starter_axe".to_string(),
+            name: "Hacha de Leñador".to_string(),
+            item_type: ItemType::Material,
+            upgrade_level: 0,
+            attack_bonus: 2,
+            defense_bonus: 0,
+            hp_bonus: 0,
+            buy_price: 150,
+            icon: "🪓".to_string(),
+            description: "Herramienta para talar madera y sauces en los bosques.".to_string(),
+            durability: 100,
+            max_durability: 100,
+        });
+        inventory[6] = Some(Item {
+            id: "starter_rod".to_string(),
+            name: "Caña de Pescar".to_string(),
+            item_type: ItemType::Material,
+            upgrade_level: 0,
+            attack_bonus: 1,
+            defense_bonus: 0,
+            hp_bonus: 0,
+            buy_price: 150,
+            icon: "🎣".to_string(),
+            description: "Herramienta de pesca para capturar carpas en el río del valle.".to_string(),
             durability: 100,
             max_durability: 100,
         });
