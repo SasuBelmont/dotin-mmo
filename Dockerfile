@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile para Servidor MMORPG Dotin (Rust)
-FROM rust:1.84-bookworm AS builder
+FROM rust:bookworm AS builder
 
 WORKDIR /usr/src/server
 
