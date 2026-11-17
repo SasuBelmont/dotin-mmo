@@ -60,6 +60,8 @@ export interface Player {
   spells: Spell[];
   attack_buff_turns: number;
   defense_buff_turns: number;
+  gender?: 'male' | 'female' | string;
+  outfit?: number;
 }
 
 export interface CharacterSummary {
@@ -287,6 +289,11 @@ export type ClientMessage =
   | { type: 'BuyPrivateShopItem'; payload: { seller_id: string; shop_slot_index: number } }
   | { type: 'RequestTrade'; payload: { target_player_id: string } }
   | { type: 'RespondTrade'; payload: { challenger_id: string; accept: boolean } }
+  | { type: 'OfferTradeItem'; payload: { slot_index: number } }
+  | { type: 'OfferTradeYang'; payload: { yang: number } }
+  | { type: 'LockTrade'; payload?: {} }
+  | { type: 'ConfirmTrade'; payload?: {} }
+  | { type: 'CancelTrade'; payload?: {} }
   | { type: 'GatherResource'; payload: { node_id: string } }
   | { type: 'CraftItem'; payload: { recipe_id: string } }
   | { type: 'OpenStash'; payload?: {} }
@@ -330,6 +337,7 @@ export type ServerMessage =
         combat_id: string;
         state: GameState;
         is_leader: boolean;
+        player_id?: string;
       };
     }
   | {
@@ -371,6 +379,7 @@ export type ServerMessage =
         exp_gained: number;
         yang_gained: number;
         dropped_items: Item[];
+        player_id?: string;
       };
     }
   | {
@@ -407,6 +416,7 @@ export type ServerMessage =
   | {
       type: 'InventorySync';
       payload: {
+        player_id?: string;
         inventory: (Item | null)[];
         equipped_weapon?: Item;
         equipped_armor?: Item;
@@ -432,6 +442,7 @@ export type ServerMessage =
   | {
       type: 'StatsSync';
       payload: {
+        player_id?: string;
         level: number;
         exp: number;
         max_exp: number;
@@ -483,6 +494,7 @@ export type ServerMessage =
   | {
       type: 'TradeRequested';
       payload: {
+        target_id: string;
         challenger_id: string;
         challenger_name: string;
       };

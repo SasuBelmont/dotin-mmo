@@ -96,15 +96,15 @@ async fn main() {
             }
 
             for (_c_id, is_victory, exp_gained, yang_gained, drops, participants) in events.finished_combats {
-                let _ = tx_clone.send(ServerMessage::ExitedCombat {
-                    is_victory,
-                    exp_gained,
-                    yang_gained,
-                    dropped_items: drops,
-                });
-
-                // Enviar InventorySync y StatsSync actualizados a los participantes con sus nuevos objetos, Yang y nivel
+                // Enviar ExitedCombat, InventorySync y StatsSync actualizados a cada participante individual
                 for p_id in &participants {
+                    let _ = tx_clone.send(ServerMessage::ExitedCombat {
+                        player_id: Some(p_id.clone()),
+                        is_victory,
+                        exp_gained,
+                        yang_gained,
+                        dropped_items: drops.clone(),
+                    });
                     if let Some(sync) = world.get_inventory_sync(p_id) {
                         let _ = tx_clone.send(sync);
                     }

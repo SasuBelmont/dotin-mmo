@@ -369,7 +369,7 @@ impl GameState {
         // Lógica única de la Piedra Metin: invocar oleadas de esbirros
         if is_metin {
             let living_minions = self.players.iter().filter(|p| p.team == bot_team && p.is_alive).count();
-            if living_minions < 3 {
+            if living_minions < 4 {
                 let occupied = self.get_occupied_positions();
                 let spawn_cell = [
                     Position::new(bot_pos.x + 1, bot_pos.y),
@@ -396,6 +396,8 @@ impl GameState {
                     self.combat_logs.push(format!("☄️ ¡La Piedra Metin emite una onda oscura e invoca a [{}] en ({}, {})!", s_name, pos.x, pos.y));
                 }
             }
+            // La Piedra Metin no ataca directamente: solo invoca y pasa turno (sus esbirros atacan)
+            return Some((None, Vec::new()));
         }
 
         let mut move_path = None;

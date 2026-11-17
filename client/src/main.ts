@@ -580,6 +580,34 @@ class GameApp {
       });
     };
 
+    this.ui.onOfferTradeItemRequested = (slotIndex) => {
+      this.network.send({
+        type: 'OfferTradeItem',
+        payload: { slot_index: slotIndex },
+      });
+    };
+
+    this.ui.onOfferTradeYangRequested = (yang) => {
+      this.network.send({
+        type: 'OfferTradeYang',
+        payload: { yang },
+      });
+    };
+
+    this.ui.onConfirmTradeRequested = () => {
+      this.network.send({
+        type: 'ConfirmTrade',
+        payload: {},
+      });
+    };
+
+    this.ui.onCancelTradeRequested = () => {
+      this.network.send({
+        type: 'CancelTrade',
+        payload: {},
+      });
+    };
+
     this.ui.onDepositStashItemRequested = (slotIndex) => {
       this.network.send({
         type: 'DepositStashItem',
@@ -735,6 +763,10 @@ class GameApp {
         }
 
         case 'EnteredCombat':
+          // Solo entrar en modo combate si este jugador es uno de los participantes
+          if (this.myPlayerId && !msg.payload.state.players.some((p) => p.id === this.myPlayerId)) {
+            break;
+          }
           this.ui.playCombatTransition(() => {
             this.enterCombatMode(msg.payload.combat_id, msg.payload.state, msg.payload.is_leader);
           });
@@ -852,6 +884,12 @@ class GameApp {
         }
 
         case 'ExitedCombat':
+          if (msg.payload.player_id && msg.payload.player_id !== this.myPlayerId) {
+            break;
+          }
+          if (this.mode !== 'combat' || !this.currentCombatId) {
+            break;
+          }
           this.isCombatFinished = true;
           this.hoveredCombatCell = null;
           this.boardView.clearMoveHighlights();
@@ -898,6 +936,9 @@ class GameApp {
           break;
 
         case 'InventorySync':
+          if (msg.payload.player_id && msg.payload.player_id !== this.myPlayerId) {
+            break;
+          }
           this.ui.syncInventory(msg.payload);
           if (this.myWorldPlayer) {
             this.myWorldPlayer.yang = msg.payload.yang;
@@ -906,6 +947,9 @@ class GameApp {
           break;
 
         case 'StatsSync':
+          if (msg.payload.player_id && msg.payload.player_id !== this.myPlayerId) {
+            break;
+          }
           this.ui.updateStats(msg.payload);
           if (this.myWorldPlayer) {
             this.myWorldPlayer.level = msg.payload.level;
@@ -937,6 +981,29 @@ class GameApp {
         case 'PrivateShopsUpdate':
           this.latestShops = msg.payload.shops;
           this.worldView.syncPrivateShops(this.latestShops);
+          break;
+
+        case 'TradeRequested':
+          if (msg.payload.target_id === this.myPlayerId) {
+            this.ui.showTradePrompt(msg.payload.challenger_id, msg.payload.challenger_name);
+          }
+          break;
+
+        case 'TradeUpdate':
+          if (this.myPlayerId && (msg.payload.p1_id === this.myPlayerId || msg.payload.p2_id === this.myPlayerId)) {
+            this.ui.showTradeModal(msg.payload, this.myPlayerId);
+          }
+          break;
+
+        case 'TradeCompleted':
+          this.ui.closeTradeModal();
+          this.ui.addChatMessage(`🤝 ${msg.payload.message}`);
+          SoundManager.getInstance().playBlacksmithSuccess();
+          break;
+
+        case 'TradeCancelled':
+          this.ui.closeTradeModal();
+          this.ui.addChatMessage('🤝 El intercambio ha sido cancelado.');
           break;
 
         case 'GatherResult': {

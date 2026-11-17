@@ -224,6 +224,8 @@ pub enum ServerMessage {
         combat_id: String,
         state: GameState,
         is_leader: bool,
+        #[serde(default)]
+        player_id: Option<String>,
     },
     CombatStateUpdate {
         combat_id: String,
@@ -246,6 +248,8 @@ pub enum ServerMessage {
         turn_count: u32,
     },
     ExitedCombat {
+        #[serde(default)]
+        player_id: Option<String>,
         is_victory: bool,
         exp_gained: u32,
         yang_gained: u32,
@@ -283,6 +287,8 @@ pub enum ServerMessage {
         item: Option<Item>,
     },
     InventorySync {
+        #[serde(default)]
+        player_id: Option<String>,
         inventory: Vec<Option<Item>>,
         equipped_weapon: Option<Item>,
         equipped_armor: Option<Item>,
@@ -301,6 +307,8 @@ pub enum ServerMessage {
     },
     // Estadísticas del Personaje (VIT, INT, STR, DEX y Habilidades)
     StatsSync {
+        #[serde(default)]
+        player_id: Option<String>,
         level: u32,
         exp: u32,
         max_exp: u32,
@@ -334,6 +342,7 @@ pub enum ServerMessage {
     PartyDisbanded,
     // Comercio 1v1
     TradeRequested {
+        target_id: String,
         challenger_id: String,
         challenger_name: String,
     },

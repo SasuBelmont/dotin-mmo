@@ -110,6 +110,10 @@ export class UIController {
   public onBuyPrivateShopItemRequested?: (sellerId: string, shopSlotIndex: number) => void;
   public onRequestTradeRequested?: (targetPlayerId: string) => void;
   public onRespondTradeRequested?: (challengerId: string, accept: boolean) => void;
+  public onOfferTradeItemRequested?: (slotIndex: number) => void;
+  public onOfferTradeYangRequested?: (yang: number) => void;
+  public onConfirmTradeRequested?: () => void;
+  public onCancelTradeRequested?: () => void;
 
   // Callbacks para Almacén, Crafteo y Mercado Central
   public onDepositStashItemRequested?: (slotIndex: number) => void;
@@ -124,6 +128,8 @@ export class UIController {
   private pendingChallengerId: string | null = null;
   private selectedTargetPlayer: WorldPlayer | null = null;
   private pendingPartyLeaderId: string | null = null;
+  private pendingTradeChallengerId: string | null = null;
+  private currentNpcDialogType: string | null = null;
   private victoryTimerInterval: number | null = null;
   private onVictoryCloseCallback: (() => void) | null = null;
 
@@ -785,6 +791,69 @@ export class UIController {
         </div>
       </div>
 
+      <!-- Modal de Invitación a Comercio 1v1 -->
+      <div id="trade-invite-modal" class="interactive" style="display: none; position: absolute; top: 28%; left: 50%; transform: translate(-50%, -50%); width: 330px; background: linear-gradient(180deg, #1f2937, #111827); border: 2px solid #10b981; border-radius: 12px; box-shadow: 0 0 35px rgba(16, 185, 129, 0.6); z-index: 120; padding: 18px; text-align: center;">
+        <div style="font-size: 28px; margin-bottom: 6px;">🤝</div>
+        <div style="font-family: 'Cinzel', serif; font-size: 16px; font-weight: bold; color: #10b981; margin-bottom: 6px;">COMERCIO DIRECTO</div>
+        <div id="trade-invite-text" style="color: #fff; font-size: 12px; margin-bottom: 14px;">Un jugador desea comerciar contigo.</div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button id="btn-accept-trade" class="btn btn-start" style="padding: 6px 14px; font-size: 12px; background: #059669;">🤝 Aceptar</button>
+          <button id="btn-reject-trade" class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;">❌ Rechazar</button>
+        </div>
+      </div>
+
+      <!-- Ventana de Intercambio / Comercio Activo -->
+      <div id="trade-window-modal" class="interactive" style="display: none; position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 560px; background: linear-gradient(180deg, #18181b, #09090b); border: 2px solid #eab308; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.95); z-index: 130; padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3f3f46; padding-bottom: 6px; margin-bottom: 12px;">
+          <div style="font-family: 'Cinzel', serif; font-size: 15px; font-weight: bold; color: #fbbf24;">🤝 COMERCIO ENTRE JUGADORES</div>
+          <button id="btn-close-trade-window" style="background: transparent; border: none; color: #aaa; font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          <!-- Columna Jugador Local -->
+          <div style="background: rgba(24, 24, 27, 0.8); border: 1px solid #3f3f46; border-radius: 8px; padding: 10px;">
+            <div id="trade-my-header" style="color: #60a5fa; font-weight: bold; font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <span>Tu Ofrenda</span>
+              <span id="trade-my-status" style="font-size: 11px; color: #aaa;">Modificando...</span>
+            </div>
+            <!-- Lista de items ofrecidos -->
+            <div id="trade-my-items" style="min-height: 80px; max-height: 120px; overflow-y: auto; background: #000; border: 1px solid #27272a; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;"></div>
+            <!-- Yang ofrecido -->
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+              <span style="font-size: 12px; color: #ffd700;">💰 Yang:</span>
+              <input type="number" id="trade-my-yang-input" min="0" placeholder="0" style="width: 100px; background: #000; border: 1px solid #555; color: #ffd700; padding: 4px 6px; border-radius: 4px; font-size: 12px;" />
+              <button id="btn-trade-offer-yang" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Ofrecer</button>
+            </div>
+            <!-- Ofrecer item del inventario -->
+            <div style="margin-top: 6px;">
+              <label style="font-size: 11px; color: #888;">Ofrecer del Inventario:</label>
+              <select id="trade-inventory-select" style="width: 100%; background: #000; border: 1px solid #555; color: #fff; padding: 4px; border-radius: 4px; font-size: 11px; margin-top: 2px;">
+                <option value="-1">-- Seleccionar Ítem --</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Columna Jugador Remoto -->
+          <div style="background: rgba(24, 24, 27, 0.8); border: 1px solid #3f3f46; border-radius: 8px; padding: 10px;">
+            <div id="trade-other-header" style="color: #f87171; font-weight: bold; font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <span id="trade-other-name">Compañero</span>
+              <span id="trade-other-status" style="font-size: 11px; color: #aaa;">Esperando...</span>
+            </div>
+            <!-- Lista de items remotos -->
+            <div id="trade-other-items" style="min-height: 80px; max-height: 120px; overflow-y: auto; background: #000; border: 1px solid #27272a; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;"></div>
+            <!-- Yang remoto -->
+            <div style="font-size: 12px; color: #ffd700; padding: 4px 0;">
+              💰 Yang Ofrecido: <span id="trade-other-yang" style="font-weight: bold;">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="btn-trade-confirm" class="btn btn-start" style="padding: 8px 16px; font-size: 12px; background: #059669;">✅ Confirmar Intercambio</button>
+          <button id="btn-trade-cancel" class="btn btn-secondary" style="padding: 8px 16px; font-size: 12px;">❌ Cancelar</button>
+        </div>
+      </div>
+
       <!-- Modal para Abrir Tienda Privada -->
       <div id="open-private-shop-modal" class="interactive" style="display: none; position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 360px; background: linear-gradient(180deg, #1c1524, #0f0a14); border: 2px solid #fbbf24; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.95); z-index: 90; padding: 18px;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 6px; margin-bottom: 10px;">
@@ -1219,6 +1288,55 @@ export class UIController {
       const m = document.getElementById('party-invite-modal');
       if (m) m.style.display = 'none';
     });
+
+    // Comercio 1v1
+    document.getElementById('btn-accept-trade')?.addEventListener('click', () => {
+      if (this.pendingTradeChallengerId) {
+        this.onRespondTradeRequested?.(this.pendingTradeChallengerId, true);
+        this.pendingTradeChallengerId = null;
+      }
+      const m = document.getElementById('trade-invite-modal');
+      if (m) m.style.display = 'none';
+      SoundManager.getInstance().playButtonClick();
+    });
+    document.getElementById('btn-reject-trade')?.addEventListener('click', () => {
+      if (this.pendingTradeChallengerId) {
+        this.onRespondTradeRequested?.(this.pendingTradeChallengerId, false);
+        this.pendingTradeChallengerId = null;
+      }
+      const m = document.getElementById('trade-invite-modal');
+      if (m) m.style.display = 'none';
+    });
+    document.getElementById('btn-close-trade-window')?.addEventListener('click', () => {
+      this.onCancelTradeRequested?.();
+      this.closeTradeModal();
+    });
+    document.getElementById('btn-trade-cancel')?.addEventListener('click', () => {
+      this.onCancelTradeRequested?.();
+      this.closeTradeModal();
+    });
+    document.getElementById('btn-trade-offer-yang')?.addEventListener('click', () => {
+      const inp = document.getElementById('trade-my-yang-input') as HTMLInputElement;
+      const yang = parseInt(inp?.value || '0', 10);
+      if (!isNaN(yang) && yang >= 0) {
+        this.onOfferTradeYangRequested?.(yang);
+        SoundManager.getInstance().playButtonClick();
+      }
+    });
+    document.getElementById('trade-inventory-select')?.addEventListener('change', (e) => {
+      const sel = e.currentTarget as HTMLSelectElement;
+      const slot = parseInt(sel?.value || '-1', 10);
+      if (!isNaN(slot) && slot >= 0) {
+        this.onOfferTradeItemRequested?.(slot);
+        SoundManager.getInstance().playButtonClick();
+        sel.value = '-1';
+      }
+    });
+    document.getElementById('btn-trade-confirm')?.addEventListener('click', () => {
+      SoundManager.getInstance().playButtonClick();
+      this.onConfirmTradeRequested?.();
+    });
+
     document.getElementById('btn-leave-party')?.addEventListener('click', () => {
       SoundManager.getInstance().playButtonClick();
       this.onLeavePartyRequested?.();
@@ -1317,6 +1435,11 @@ export class UIController {
     });
     document.getElementById('tb-btn-market')?.addEventListener('click', () => {
       SoundManager.getInstance().playButtonClick();
+      const modal = document.getElementById('npc-dialog-modal');
+      if (modal && modal.style.display !== 'none' && this.currentNpcDialogType === 'market_board') {
+        this.closeNPCDialog();
+        return;
+      }
       this.showNPCDialog({
         npc_id: 'npc_market_board',
         name: 'Tablón de Mercado',
@@ -2343,6 +2466,7 @@ export class UIController {
 
     if (!modal || !nameEl || !textEl || !contentEl) return;
 
+    this.currentNpcDialogType = dialog.dialog_type;
     nameEl.innerText = dialog.name;
     textEl.innerText = dialog.text;
     modal.style.width = dialog.dialog_type === 'market_board' ? '660px' : '460px';
@@ -2372,6 +2496,7 @@ export class UIController {
   public closeNPCDialog(): void {
     const modal = document.getElementById('npc-dialog-modal');
     if (modal) modal.style.display = 'none';
+    this.currentNpcDialogType = null;
   }
 
   private renderBlacksmithUI(container: HTMLElement): void {
@@ -3017,6 +3142,108 @@ export class UIController {
     if (textEl) textEl.innerText = `${leaderName} te invita a unirte a su grupo de batalla.`;
     if (modal) modal.style.display = 'block';
     SoundManager.getInstance().playButtonClick();
+  }
+
+  public showTradePrompt(challengerId: string, challengerName: string): void {
+    this.pendingTradeChallengerId = challengerId;
+    const modal = document.getElementById('trade-invite-modal');
+    const textEl = document.getElementById('trade-invite-text');
+    if (textEl) textEl.innerText = `${challengerName} desea comerciar contigo.`;
+    if (modal) modal.style.display = 'block';
+    SoundManager.getInstance().playButtonClick();
+  }
+
+  public showTradeModal(tradeData: any, myPlayerId: string): void {
+    const invModal = document.getElementById('trade-invite-modal');
+    if (invModal) invModal.style.display = 'none';
+
+    const winModal = document.getElementById('trade-window-modal');
+    if (!winModal) return;
+    winModal.style.display = 'block';
+
+    const isP1 = tradeData.p1_id === myPlayerId;
+    const myItems = isP1 ? tradeData.p1_items : tradeData.p2_items;
+    const myYang = isP1 ? tradeData.p1_yang : tradeData.p2_yang;
+    const myConfirmed = isP1 ? tradeData.p1_confirmed : tradeData.p2_confirmed;
+
+    const otherName = isP1 ? tradeData.p2_name : tradeData.p1_name;
+    const otherItems = isP1 ? tradeData.p2_items : tradeData.p1_items;
+    const otherYang = isP1 ? tradeData.p2_yang : tradeData.p1_yang;
+    const otherConfirmed = isP1 ? tradeData.p2_confirmed : tradeData.p1_confirmed;
+
+    const otherNameEl = document.getElementById('trade-other-name');
+    if (otherNameEl) otherNameEl.innerText = `Ofrenda de ${otherName}`;
+
+    const myStatusEl = document.getElementById('trade-my-status');
+    if (myStatusEl) {
+      myStatusEl.innerText = myConfirmed ? '✅ Listo' : '⏳ Modificando';
+      myStatusEl.style.color = myConfirmed ? '#4ade80' : '#aaa';
+    }
+
+    const otherStatusEl = document.getElementById('trade-other-status');
+    if (otherStatusEl) {
+      otherStatusEl.innerText = otherConfirmed ? '✅ Listo' : '⏳ Modificando';
+      otherStatusEl.style.color = otherConfirmed ? '#4ade80' : '#aaa';
+    }
+
+    const myYangInput = document.getElementById('trade-my-yang-input') as HTMLInputElement;
+    if (myYangInput && document.activeElement !== myYangInput) {
+      myYangInput.value = (myYang || 0).toString();
+    }
+
+    const myItemsEl = document.getElementById('trade-my-items');
+    if (myItemsEl) {
+      if (!myItems || myItems.length === 0) {
+        myItemsEl.innerHTML = '<span style="color:#666;font-size:11px;">Sin objetos ofrecidos</span>';
+      } else {
+        myItemsEl.innerHTML = myItems.map((item: any) => `
+          <div style="display:flex;align-items:center;gap:6px;background:#18181b;padding:4px;border-radius:4px;border:1px solid #333;">
+            <span style="font-size:14px;">${item.icon || '📦'}</span>
+            <span style="font-size:11px;color:#ffd700;">${item.name} ${item.upgrade_level > 0 ? '+' + item.upgrade_level : ''}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    const otherYangEl = document.getElementById('trade-other-yang');
+    if (otherYangEl) otherYangEl.innerText = `${(otherYang || 0).toLocaleString()} Yang`;
+
+    const otherItemsEl = document.getElementById('trade-other-items');
+    if (otherItemsEl) {
+      if (!otherItems || otherItems.length === 0) {
+        otherItemsEl.innerHTML = '<span style="color:#666;font-size:11px;">Sin objetos ofrecidos</span>';
+      } else {
+        otherItemsEl.innerHTML = otherItems.map((item: any) => `
+          <div style="display:flex;align-items:center;gap:6px;background:#18181b;padding:4px;border-radius:4px;border:1px solid #333;">
+            <span style="font-size:14px;">${item.icon || '📦'}</span>
+            <span style="font-size:11px;color:#ffd700;">${item.name} ${item.upgrade_level > 0 ? '+' + item.upgrade_level : ''}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    const sel = document.getElementById('trade-inventory-select') as HTMLSelectElement;
+    if (sel && this.currentInventory) {
+      sel.innerHTML = '<option value="-1">-- Seleccionar Ítem del Inventario --</option>' +
+        this.currentInventory.map((item, idx) => {
+          if (!item) return '';
+          return `<option value="${idx}">${item.name} ${item.upgrade_level > 0 ? '+' + item.upgrade_level : ''}</option>`;
+        }).join('');
+    }
+
+    const btnConfirm = document.getElementById('btn-trade-confirm') as HTMLButtonElement;
+    if (btnConfirm) {
+      btnConfirm.innerText = myConfirmed ? '⏳ Esperando confirmación mutua...' : '✅ Confirmar Intercambio';
+      btnConfirm.style.background = myConfirmed ? '#2563eb' : '#059669';
+    }
+  }
+
+  public closeTradeModal(): void {
+    const invModal = document.getElementById('trade-invite-modal');
+    if (invModal) invModal.style.display = 'none';
+    const winModal = document.getElementById('trade-window-modal');
+    if (winModal) winModal.style.display = 'none';
+    this.pendingTradeChallengerId = null;
   }
 
   public updateParty(_partyId: string, leaderId: string, members: PartyMemberInfo[]): void {

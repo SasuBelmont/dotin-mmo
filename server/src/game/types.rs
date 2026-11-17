@@ -67,6 +67,10 @@ pub struct Player {
     pub defense_buff_turns: i32,
     pub attack_bonus: i32,
     pub defense_bonus: i32,
+    #[serde(default)]
+    pub gender: Option<String>,
+    #[serde(default)]
+    pub outfit: Option<u8>,
 }
 
 impl Player {
@@ -104,6 +108,8 @@ impl Player {
             defense_buff_turns: 0,
             attack_bonus: 0,
             defense_bonus: 0,
+            gender: None,
+            outfit: None,
         }
     }
 

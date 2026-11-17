@@ -294,6 +294,7 @@ async fn handle_client_message(client_id: &str, msg: ClientMessage, app_state: &
                         combat_id: combat_id.clone(),
                         state,
                         is_leader: true,
+                        player_id: Some(client_id.to_string()),
                     });
                     let _ = app_state.tx.send(ServerMessage::WorldUpdate {
                         players: world.players.values().cloned().collect(),
@@ -320,6 +321,7 @@ async fn handle_client_message(client_id: &str, msg: ClientMessage, app_state: &
                         combat_id: combat_id.clone(),
                         state: state.clone(),
                         is_leader: false,
+                        player_id: Some(client_id.to_string()),
                     });
                     let _ = app_state.tx.send(ServerMessage::CombatStateUpdate {
                         combat_id: combat_id.clone(),
@@ -582,6 +584,13 @@ async fn handle_client_message(client_id: &str, msg: ClientMessage, app_state: &
                             combat_id: duel_id.clone(),
                             state: state.clone(),
                             is_leader: true,
+                            player_id: Some(challenger_id.clone()),
+                        });
+                        let _ = app_state.tx.send(ServerMessage::EnteredCombat {
+                            combat_id: duel_id.clone(),
+                            state: state.clone(),
+                            is_leader: false,
+                            player_id: Some(client_id.to_string()),
                         });
                         let _ = app_state.tx.send(ServerMessage::CombatTurnChanged {
                             combat_id: duel_id.clone(),
@@ -699,48 +708,68 @@ async fn handle_client_message(client_id: &str, msg: ClientMessage, app_state: &
         }
         ClientMessage::RequestTrade { target_player_id } => {
             let challenger_name = world.players.get(client_id).map(|p| p.name.clone()).unwrap_or_default();
-            let _ = app_state.tx.send(ServerMessage::TradeRequested {
-                challenger_id: client_id.to_string(),
-                challenger_name: challenger_name.clone(),
-            });
-            let _ = app_state.tx.send(ServerMessage::ChatBroadcast {
-                message: format!("🤝 {} inició una solicitud de comercio.", challenger_name),
-            });
+            if !world.players.contains_key(&target_player_id) {
+                let _ = app_state.tx.send(ServerMessage::ActionError { message: "El jugador objetivo no está disponible.".to_string() });
+            } else {
+                let _ = app_state.tx.send(ServerMessage::TradeRequested {
+                    target_id: target_player_id,
+                    challenger_id: client_id.to_string(),
+                    challenger_name: challenger_name.clone(),
+                });
+                let _ = app_state.tx.send(ServerMessage::ChatBroadcast {
+                    message: format!("🤝 {} envió una solicitud de comercio.", challenger_name),
+                });
+            }
         }
         ClientMessage::RespondTrade { challenger_id, accept } => {
             if !accept {
                 let _ = app_state.tx.send(ServerMessage::TradeCancelled);
             } else {
                 let trade_id = world.start_trade(&challenger_id, client_id);
-                let p1_name = world.players.get(&challenger_id).map(|p| p.name.clone()).unwrap_or_default();
-                let p2_name = world.players.get(client_id).map(|p| p.name.clone()).unwrap_or_default();
-                let _ = app_state.tx.send(ServerMessage::TradeUpdate {
-                    trade_id,
-                    p1_id: challenger_id,
-                    p2_id: client_id.to_string(),
-                    p1_name,
-                    p2_name,
-                    p1_items: Vec::new(),
-                    p1_yang: 0,
-                    p1_locked: false,
-                    p1_confirmed: false,
-                    p2_items: Vec::new(),
-                    p2_yang: 0,
-                    p2_locked: false,
-                    p2_confirmed: false,
-                });
+                if let Some(msg) = world.get_trade_update(&trade_id) {
+                    let _ = app_state.tx.send(msg);
+                }
             }
         }
-        ClientMessage::OfferTradeItem { slot_index: _ } => {}
-        ClientMessage::OfferTradeYang { yang: _ } => {}
+        ClientMessage::OfferTradeItem { slot_index } => {
+            match world.offer_trade_item(client_id, slot_index) {
+                Ok(msg) => {
+                    let _ = app_state.tx.send(msg);
+                }
+                Err(err) => {
+                    let _ = app_state.tx.send(ServerMessage::ActionError { message: err });
+                }
+            }
+        }
+        ClientMessage::OfferTradeYang { yang } => {
+            match world.offer_trade_yang(client_id, yang) {
+                Ok(msg) => {
+                    let _ = app_state.tx.send(msg);
+                }
+                Err(err) => {
+                    let _ = app_state.tx.send(ServerMessage::ActionError { message: err });
+                }
+            }
+        }
         ClientMessage::LockTrade => {}
         ClientMessage::ConfirmTrade => {
-            let _ = app_state.tx.send(ServerMessage::TradeCompleted {
-                message: "Comercio realizado con éxito.".to_string(),
-            });
+            match world.confirm_trade(client_id) {
+                Ok((msg, maybe_syncs)) => {
+                    let _ = app_state.tx.send(msg);
+                    if let Some((sync1, sync2)) = maybe_syncs {
+                        let _ = app_state.tx.send(sync1);
+                        let _ = app_state.tx.send(sync2);
+                    }
+                }
+                Err(err) => {
+                    let _ = app_state.tx.send(ServerMessage::ActionError { message: err });
+                }
+            }
         }
         ClientMessage::CancelTrade => {
-            let _ = app_state.tx.send(ServerMessage::TradeCancelled);
+            if let Some(msg) = world.cancel_trade(client_id) {
+                let _ = app_state.tx.send(msg);
+            }
         }
         // ==========================================
         // RECOLECCIÓN & CRAFTEO

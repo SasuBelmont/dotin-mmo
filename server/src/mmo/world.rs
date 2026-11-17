@@ -771,6 +771,8 @@ impl WorldManager {
             combat_p.defense_bonus = bonus_def;
             combat_p.max_hp += bonus_hp;
             combat_p.hp = combat_p.max_hp;
+            combat_p.gender = Some(player.gender.clone());
+            combat_p.outfit = Some(player.outfit);
         }
 
         // Asignar vida y atributos precisos al monstruo según su tipo
@@ -790,6 +792,9 @@ impl WorldManager {
                     bot_p.hp = 260;
                     bot_p.max_pm = 0;
                     bot_p.pm = 0;
+                    bot_p.max_ap = 0;
+                    bot_p.ap = 0;
+                    bot_p.spells.clear(); // La Piedra Metin no ataca directamente, solo invoca esbirros
                 }
                 _ => {}
             }
@@ -806,6 +811,10 @@ impl WorldManager {
                                 m.in_combat_id = Some(combat_id.clone());
                                 participants.push(member_id.clone());
                                 let _ = battle_state.add_player(member_id.clone(), m.name.clone(), m.class, 0, false);
+                                if let Some(combat_m) = battle_state.players.iter_mut().find(|p| p.id == *member_id) {
+                                    combat_m.gender = Some(m.gender.clone());
+                                    combat_m.outfit = Some(m.outfit);
+                                }
                             }
                         }
                     }
@@ -854,6 +863,10 @@ impl WorldManager {
                 }
                 // Añadir al combate
                 room.game_state.add_player(player_id.to_string(), player_name.clone(), player_class, 0, false)?;
+                if let Some(combat_p) = room.game_state.players.iter_mut().find(|p| p.id == player_id) {
+                    combat_p.gender = Some(player.gender.clone());
+                    combat_p.outfit = Some(player.outfit);
+                }
                 if player.level >= 5 {
                     room.game_state.set_player_spells(player_id, crate::game::spells::get_subclass_spells(player_class, "corporal"));
                 }
@@ -913,6 +926,8 @@ impl WorldManager {
                 fighter.defense_bonus = def;
                 fighter.max_hp += hp;
                 fighter.hp = fighter.max_hp;
+                fighter.gender = Some(p.gender.clone());
+                fighter.outfit = Some(p.outfit);
             }
         }
 
@@ -1646,6 +1661,7 @@ impl WorldManager {
     pub fn get_inventory_sync(&self, player_id: &str) -> Option<crate::protocol::ServerMessage> {
         let player = self.players.get(player_id)?;
         Some(crate::protocol::ServerMessage::InventorySync {
+            player_id: Some(player_id.to_string()),
             inventory: player.inventory.clone(),
             equipped_weapon: player.equipped_weapon.clone(),
             equipped_armor: player.equipped_armor.clone(),
@@ -1731,6 +1747,7 @@ impl WorldManager {
         self.chat_history.push(format!("🛍️ Compraste [{}] por {} Yang.", item_name, 50));
 
         Ok(crate::protocol::ServerMessage::InventorySync {
+            player_id: Some(player_id.to_string()),
             inventory: player.inventory.clone(),
             equipped_weapon: player.equipped_weapon.clone(),
             equipped_armor: player.equipped_armor.clone(),
@@ -1859,6 +1876,7 @@ impl WorldManager {
         };
 
         let sync = crate::protocol::ServerMessage::InventorySync {
+            player_id: Some(player_id.to_string()),
             inventory: player.inventory.clone(),
             equipped_weapon: player.equipped_weapon.clone(),
             equipped_armor: player.equipped_armor.clone(),
@@ -1908,6 +1926,7 @@ impl WorldManager {
         }
 
         Ok(crate::protocol::ServerMessage::InventorySync {
+            player_id: Some(player_id.to_string()),
             inventory: player.inventory.clone(),
             equipped_weapon: player.equipped_weapon.clone(),
             equipped_armor: player.equipped_armor.clone(),
@@ -1935,6 +1954,7 @@ impl WorldManager {
         }
 
         Ok(crate::protocol::ServerMessage::InventorySync {
+            player_id: Some(player_id.to_string()),
             inventory: player.inventory.clone(),
             equipped_weapon: player.equipped_weapon.clone(),
             equipped_armor: player.equipped_armor.clone(),
@@ -1996,6 +2016,7 @@ impl WorldManager {
             };
 
             let sync = crate::protocol::ServerMessage::InventorySync {
+                player_id: Some(player_id.to_string()),
                 inventory: player.inventory.clone(),
                 equipped_weapon: player.equipped_weapon.clone(),
                 equipped_armor: player.equipped_armor.clone(),
@@ -2015,6 +2036,7 @@ impl WorldManager {
         self.chat_history.push(msg.clone());
 
         let sync = crate::protocol::ServerMessage::InventorySync {
+            player_id: Some(player_id.to_string()),
             inventory: player.inventory.clone(),
             equipped_weapon: player.equipped_weapon.clone(),
             equipped_armor: player.equipped_armor.clone(),
@@ -2050,6 +2072,7 @@ impl WorldManager {
         p.stat_points -= 1;
 
         Ok(crate::protocol::ServerMessage::StatsSync {
+            player_id: Some(player_id.to_string()),
             level: p.level,
             exp: p.exp,
             max_exp: p.max_exp,
@@ -2131,6 +2154,7 @@ impl WorldManager {
         }
 
         Ok(crate::protocol::ServerMessage::StatsSync {
+            player_id: Some(player_id.to_string()),
             level: p.level,
             exp: p.exp,
             max_exp: p.max_exp,
@@ -2165,6 +2189,7 @@ impl WorldManager {
         self.chat_history.push(format!("📜 ¡{} ha elegido el camino de la doctrina [{}]!", p.name, subclass));
 
         Ok(crate::protocol::ServerMessage::StatsSync {
+            player_id: Some(player_id.to_string()),
             level: p.level,
             exp: p.exp,
             max_exp: p.max_exp,
@@ -2184,6 +2209,7 @@ impl WorldManager {
     pub fn get_stats_sync(&self, player_id: &str) -> Option<crate::protocol::ServerMessage> {
         let p = self.players.get(player_id)?;
         Some(crate::protocol::ServerMessage::StatsSync {
+            player_id: Some(player_id.to_string()),
             level: p.level,
             exp: p.exp,
             max_exp: p.max_exp,
@@ -2404,6 +2430,163 @@ impl WorldManager {
         trade_id
     }
 
+    pub fn get_trade_update(&self, trade_id: &str) -> Option<crate::protocol::ServerMessage> {
+        let t = self.trades.get(trade_id)?;
+        let p1_name = self.players.get(&t.p1_id).map(|p| p.name.clone()).unwrap_or_default();
+        let p2_name = self.players.get(&t.p2_id).map(|p| p.name.clone()).unwrap_or_default();
+        Some(crate::protocol::ServerMessage::TradeUpdate {
+            trade_id: t.trade_id.clone(),
+            p1_id: t.p1_id.clone(),
+            p2_id: t.p2_id.clone(),
+            p1_name,
+            p2_name,
+            p1_items: t.p1_items.clone(),
+            p1_yang: t.p1_yang,
+            p1_locked: t.p1_locked,
+            p1_confirmed: t.p1_confirmed,
+            p2_items: t.p2_items.clone(),
+            p2_yang: t.p2_yang,
+            p2_locked: t.p2_locked,
+            p2_confirmed: t.p2_confirmed,
+        })
+    }
+
+    pub fn offer_trade_item(&mut self, player_id: &str, slot_index: usize) -> Result<crate::protocol::ServerMessage, String> {
+        let trade_id = self.trades.iter()
+            .find(|(_, t)| t.p1_id == player_id || t.p2_id == player_id)
+            .map(|(id, _)| id.clone())
+            .ok_or("No estás en ninguna sesión de comercio activa")?;
+
+        let player = self.players.get(player_id).ok_or("Jugador no encontrado")?;
+        let item = player.inventory.get(slot_index).and_then(|s| s.clone()).ok_or("No hay ningún objeto en esa ranura")?;
+
+        let t = self.trades.get_mut(&trade_id).unwrap();
+        if t.p1_id == player_id {
+            if t.p1_items.len() >= 6 {
+                return Err("Máximo 6 objetos por comercio".to_string());
+            }
+            if !t.p1_items.iter().any(|it| it.id == item.id) {
+                t.p1_items.push(item);
+            }
+            t.p1_confirmed = false;
+            t.p2_confirmed = false;
+        } else {
+            if t.p2_items.len() >= 6 {
+                return Err("Máximo 6 objetos por comercio".to_string());
+            }
+            if !t.p2_items.iter().any(|it| it.id == item.id) {
+                t.p2_items.push(item);
+            }
+            t.p1_confirmed = false;
+            t.p2_confirmed = false;
+        }
+
+        self.get_trade_update(&trade_id).ok_or("Error generando actualización de comercio".to_string())
+    }
+
+    pub fn offer_trade_yang(&mut self, player_id: &str, yang: u32) -> Result<crate::protocol::ServerMessage, String> {
+        let trade_id = self.trades.iter()
+            .find(|(_, t)| t.p1_id == player_id || t.p2_id == player_id)
+            .map(|(id, _)| id.clone())
+            .ok_or("No estás en ninguna sesión de comercio activa")?;
+
+        let player = self.players.get(player_id).ok_or("Jugador no encontrado")?;
+        if yang > player.yang {
+            return Err("No tienes suficiente Yang".to_string());
+        }
+
+        let t = self.trades.get_mut(&trade_id).unwrap();
+        if t.p1_id == player_id {
+            t.p1_yang = yang;
+            t.p1_confirmed = false;
+            t.p2_confirmed = false;
+        } else {
+            t.p2_yang = yang;
+            t.p1_confirmed = false;
+            t.p2_confirmed = false;
+        }
+
+        self.get_trade_update(&trade_id).ok_or("Error generando actualización de comercio".to_string())
+    }
+
+    pub fn confirm_trade(&mut self, player_id: &str) -> Result<(crate::protocol::ServerMessage, Option<(crate::protocol::ServerMessage, crate::protocol::ServerMessage)>), String> {
+        let trade_id = self.trades.iter()
+            .find(|(_, t)| t.p1_id == player_id || t.p2_id == player_id)
+            .map(|(id, _)| id.clone())
+            .ok_or("No estás en ninguna sesión de comercio activa")?;
+
+        let (p1_confirmed, p2_confirmed, p1_id, p2_id, p1_items, p2_items, p1_yang, p2_yang) = {
+            let t = self.trades.get_mut(&trade_id).unwrap();
+            if t.p1_id == player_id {
+                t.p1_confirmed = true;
+            } else {
+                t.p2_confirmed = true;
+            }
+            (t.p1_confirmed, t.p2_confirmed, t.p1_id.clone(), t.p2_id.clone(), t.p1_items.clone(), t.p2_items.clone(), t.p1_yang, t.p2_yang)
+        };
+
+        if p1_confirmed && p2_confirmed {
+            // Verificar espacio en inventario de ambos jugadores
+            let p1 = self.players.get(&p1_id).ok_or("Jugador 1 desconectado")?;
+            let p2 = self.players.get(&p2_id).ok_or("Jugador 2 desconectado")?;
+
+            if p1.yang < p1_yang || p2.yang < p2_yang {
+                self.trades.remove(&trade_id);
+                return Err("Fondos de Yang insuficientes para completar el intercambio".to_string());
+            }
+
+            // Realizar intercambio atómico
+            let p1_mut = self.players.get_mut(&p1_id).unwrap();
+            p1_mut.yang = p1_mut.yang - p1_yang + p2_yang;
+            for item in &p1_items {
+                if let Some(pos) = p1_mut.inventory.iter().position(|slot| slot.as_ref().map(|i| &i.id) == Some(&item.id)) {
+                    p1_mut.inventory[pos] = None;
+                }
+            }
+            for item in &p2_items {
+                if let Some(pos) = p1_mut.inventory.iter().position(|slot| slot.is_none()) {
+                    p1_mut.inventory[pos] = Some(item.clone());
+                }
+            }
+
+            let p2_mut = self.players.get_mut(&p2_id).unwrap();
+            p2_mut.yang = p2_mut.yang - p2_yang + p1_yang;
+            for item in &p2_items {
+                if let Some(pos) = p2_mut.inventory.iter().position(|slot| slot.as_ref().map(|i| &i.id) == Some(&item.id)) {
+                    p2_mut.inventory[pos] = None;
+                }
+            }
+            for item in &p1_items {
+                if let Some(pos) = p2_mut.inventory.iter().position(|slot| slot.is_none()) {
+                    p2_mut.inventory[pos] = Some(item.clone());
+                }
+            }
+
+            self.trades.remove(&trade_id);
+
+            let sync1 = self.get_inventory_sync(&p1_id).unwrap();
+            let sync2 = self.get_inventory_sync(&p2_id).unwrap();
+
+            let complete_msg = crate::protocol::ServerMessage::TradeCompleted {
+                message: "🤝 ¡Comercio realizado con éxito entre ambos héroes!".to_string(),
+            };
+
+            Ok((complete_msg, Some((sync1, sync2))))
+        } else {
+            let update = self.get_trade_update(&trade_id).unwrap();
+            Ok((update, None))
+        }
+    }
+
+    pub fn cancel_trade(&mut self, player_id: &str) -> Option<crate::protocol::ServerMessage> {
+        let trade_id = self.trades.iter()
+            .find(|(_, t)| t.p1_id == player_id || t.p2_id == player_id)
+            .map(|(id, _)| id.clone())?;
+
+        self.trades.remove(&trade_id);
+        Some(crate::protocol::ServerMessage::TradeCancelled)
+    }
+
     pub fn turn_in_quest(&mut self, player_id: &str, quest_id: &str) -> Result<(String, crate::protocol::ServerMessage), String> {
         let player = self.players.get_mut(player_id).ok_or("Jugador no encontrado")?;
 
@@ -2446,6 +2629,7 @@ impl WorldManager {
         self.chat_history.push(msg.clone());
 
         let sync = crate::protocol::ServerMessage::InventorySync {
+            player_id: Some(player_id.to_string()),
             inventory: player.inventory.clone(),
             equipped_weapon: player.equipped_weapon.clone(),
             equipped_armor: player.equipped_armor.clone(),
