@@ -1,0 +1,8 @@
+client/node_modules
+client/dist
+target
+server/target
+*.zip
+MT2Client
+.git
+*.db*
