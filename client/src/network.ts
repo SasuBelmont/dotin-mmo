@@ -24,7 +24,6 @@ export class NetworkManager {
         // 2. Variable de entorno Vite configurada en Vercel
         this.url = (import.meta as any).env.VITE_WS_URL;
       } else if (typeof window !== 'undefined') {
-        const isHttps = window.location.protocol === 'https:';
         const hostname = window.location.hostname;
         const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
         const isLanIp = /^192\.168\./.test(hostname) || /^10\./.test(hostname) || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname);
@@ -33,8 +32,8 @@ export class NetworkManager {
           // Entorno local o red LAN (misma red Wi-Fi / cable)
           this.url = `ws://${hostname}:8080/ws`;
         } else {
-          // Despliegue en la nube o dominio público
-          this.url = isHttps ? `wss://${window.location.host}/ws` : `ws://${window.location.host}/ws`;
+          // Despliegue en la nube (Vercel) -> Conectar automáticamente al backend de Render
+          this.url = (import.meta as any).env?.VITE_WS_URL || 'wss://dotin-mmo.onrender.com/ws';
         }
       } else {
         this.url = 'ws://127.0.0.1:8080/ws';
