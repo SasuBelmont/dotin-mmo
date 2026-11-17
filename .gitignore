@@ -1,0 +1,33 @@
+# Node / Client
+node_modules/
+client/node_modules/
+client/dist/
+dist/
+.DS_Store
+
+# Large archives and temporary dumps
+MT2Client/
+*.zip
+debug_*.png
+
+# Rust / Server
+server/target/
+target/
+*.pdb
+*.db
+*.db-wal
+*.db-shm
+server/dotin.db*
+
+# IDE / Logs
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local

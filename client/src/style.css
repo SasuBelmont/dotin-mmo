@@ -1,0 +1,2024 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=MedievalSharp&family=Montserrat:wght@400;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #0b0c10;
+  font-family: 'Montserrat', sans-serif;
+  color: #e0e0e0;
+  user-select: none;
+}
+
+#canvas-container {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* UI Overlay */
+#ui-root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.interactive {
+  pointer-events: auto;
+}
+
+/* Top Turn Banner */
+.top-banner {
+  margin: 16px auto 0 auto;
+  background: linear-gradient(180deg, rgba(20, 20, 25, 0.95), rgba(10, 10, 15, 0.85));
+  border: 2px solid #b8860b;
+  border-radius: 8px;
+  padding: 8px 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 10px rgba(184, 134, 11, 0.3);
+  text-align: center;
+  min-width: 380px;
+}
+
+.turn-title {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  letter-spacing: 1px;
+}
+
+.turn-subtitle {
+  font-size: 13px;
+  color: #bbb;
+  margin-top: 4px;
+}
+
+/* Turn Timer Bar */
+.turn-timer-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.turn-timer-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(20, 20, 30, 0.8);
+  border: 1px solid #555;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.turn-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #38bdf8, #ffd700);
+  transition: width 1s linear;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+.turn-timer-fill.enemy-turn {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.turn-timer-text {
+  font-size: 12px;
+  font-weight: 900;
+  color: #ffd700;
+  min-width: 48px;
+  text-align: right;
+  font-family: 'Cinzel', serif;
+}
+
+/* Timeline Cards (Turn Order) */
+.timeline-bar {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 15, 22, 0.9);
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 12px;
+  min-width: 170px;
+  transition: all 0.2s ease;
+}
+
+.timeline-card.active {
+  border-color: #ffd700;
+  background: rgba(40, 35, 20, 0.95);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+  transform: translateX(-6px);
+}
+
+.timeline-card.jinno {
+  border-left: 4px solid #1e88e5;
+}
+
+.timeline-card.shinsoo {
+  border-left: 4px solid #e53935;
+}
+
+.timeline-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.timeline-hp {
+  font-size: 11px;
+  color: #4ade80;
+}
+
+/* Combat Log */
+.combat-log-container {
+  position: absolute;
+  bottom: 120px;
+  left: 20px;
+  width: 320px;
+  height: 180px;
+  background: rgba(12, 14, 20, 0.88);
+  border: 1px solid #333;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+}
+
+.combat-log-title {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Cinzel', serif;
+  color: #b8860b;
+  border-bottom: 1px solid #222;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.combat-log-messages {
+  flex: 1;
+  padding: 8px 12px;
+  overflow-y: auto;
+  font-size: 11px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-entry {
+  color: #ccc;
+}
+
+/* =======================================================
+   MÓDULO DE COMBATE DOFUS 1.29 INTEGRADO EN LA TASKBAR
+   ======================================================= */
+#dofus-combat-hub {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 80;
+}
+
+.dofus-combat-orbs {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.dofus-mini-orb {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8), inset 0 1px 3px rgba(255, 255, 255, 0.4);
+  border: 2px solid #fef08a;
+  cursor: default;
+  transition: transform 0.15s ease;
+}
+
+.dofus-mini-orb:hover {
+  transform: scale(1.08);
+}
+
+.dofus-mini-orb.ap {
+  background: radial-gradient(circle at 35% 30%, #38bdf8 0%, #0284c7 70%, #0369a1 100%);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.65), inset 0 1px 3px rgba(255, 255, 255, 0.5);
+}
+
+.dofus-mini-orb.pm {
+  background: radial-gradient(circle at 35% 30%, #4ade80 0%, #16a34a 70%, #14532d 100%);
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.65), inset 0 1px 3px rgba(255, 255, 255, 0.5);
+}
+
+.dofus-mini-orb-val {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  font-family: Arial, sans-serif;
+}
+
+.dofus-mini-orb-lbl {
+  font-size: 8px;
+  font-weight: 800;
+  color: #fef08a;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Botón "Fin de Turno" Auténtico Dofus */
+.dofus-btn-pass-turn {
+  pointer-events: auto;
+  padding: 5px 12px;
+  background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
+  border: 2px solid #fef08a;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.7), inset 0 1px 2px rgba(255,255,255,0.3);
+  transition: all 0.15s ease;
+  min-width: 98px;
+  height: 38px;
+}
+
+.dofus-btn-pass-turn small {
+  font-size: 8px;
+  opacity: 0.85;
+  font-weight: normal;
+}
+
+.dofus-btn-pass-turn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.85);
+  transform: translateY(-1px);
+}
+
+.dofus-btn-pass-turn.active-turn {
+  background: linear-gradient(180deg, #15803d 0%, #166534 100%);
+  border-color: #4ade80;
+  animation: pulse-pass-turn 1.4s infinite;
+}
+
+.dofus-btn-pass-turn:disabled {
+  opacity: 0.45;
+  filter: grayscale(80%);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@keyframes pulse-pass-turn {
+  0%, 100% { box-shadow: 0 0 4px rgba(74, 222, 128, 0.5); }
+  50% { box-shadow: 0 0 14px rgba(74, 222, 128, 1); border-color: #86efac; }
+}
+
+.spell-slot {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  background: #181924;
+  border: 2px solid #555;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.spell-slot:hover {
+  border-color: #ffd700;
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
+.spell-slot.selected {
+  border-color: #ff3b30;
+  box-shadow: 0 0 16px rgba(255, 59, 48, 0.8);
+  transform: scale(1.05);
+}
+
+.spell-slot.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(80%);
+}
+
+.spell-icon {
+  font-size: 24px;
+}
+
+.spell-hotkey {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #bbb;
+}
+
+.spell-cost {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #38bdf8;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+/* Action Buttons */
+.controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn {
+  padding: 8px 16px;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.btn-pass {
+  background: linear-gradient(180deg, #d97706, #b45309);
+  color: #fff;
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
+}
+
+.btn-pass:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.7);
+  transform: translateY(-1px);
+}
+
+.btn-pass:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #252836;
+  color: #bbb;
+  border-color: #444;
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+.btn-secondary:hover {
+  background: #32364a;
+  color: #fff;
+  border-color: #666;
+}
+
+/* Tooltip */
+#spell-tooltip {
+  position: absolute;
+  background: rgba(15, 17, 24, 0.95);
+  border: 1px solid #b8860b;
+  border-radius: 6px;
+  padding: 10px 14px;
+  max-width: 260px;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.9);
+  display: none;
+}
+
+.tooltip-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd700;
+  margin-bottom: 4px;
+}
+
+.tooltip-meta {
+  font-size: 11px;
+  color: #38bdf8;
+  margin-bottom: 6px;
+}
+
+.tooltip-desc {
+  font-size: 11px;
+  color: #ddd;
+  line-height: 1.4;
+}
+
+/* Modal de Selección de Personaje */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(5, 5, 10, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.modal-card {
+  width: 520px;
+  background: linear-gradient(180deg, #181924, #0f1017);
+  border: 2px solid #b8860b;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 20px rgba(184, 134, 11, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-header {
+  text-align: center;
+}
+
+.modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 26px;
+  font-weight: 900;
+  color: #ffd700;
+  letter-spacing: 2px;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.input-text {
+  background: #0f1017;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.input-text:focus {
+  border-color: #ffd700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.class-card {
+  background: #13141e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.class-card:hover {
+  border-color: #ffd700;
+  transform: translateY(-2px);
+}
+
+.class-card.selected {
+  border-color: #ffd700;
+  background: rgba(184, 134, 11, 0.2);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+}
+
+.class-card-icon {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+.class-card-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.kingdom-select {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.kingdom-card {
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.kingdom-card.jinno {
+  background: rgba(30, 136, 229, 0.15);
+  border-color: #1e88e5;
+}
+
+.kingdom-card.shinsoo {
+  background: rgba(229, 57, 53, 0.15);
+  border-color: #e53935;
+}
+
+.kingdom-card.selected {
+  transform: scale(1.02);
+  box-shadow: 0 0 15px currentColor;
+}
+
+.kingdom-name {
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.kingdom-desc {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+}
+
+.btn-start {
+  padding: 12px;
+  font-size: 16px;
+  background: linear-gradient(180deg, #ffd700, #b8860b);
+  color: #000;
+  border: none;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.btn-start:hover {
+  background: linear-gradient(180deg, #ffea70, #d4af37);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+}
+
+/* MMO Player Card (Top-Left) */
+.mmo-player-card {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: linear-gradient(135deg, rgba(20, 22, 32, 0.95), rgba(10, 11, 16, 0.95));
+  border: 2px solid #b8860b;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 10px rgba(184, 134, 11, 0.25);
+  min-width: 250px;
+  z-index: 20;
+}
+
+.player-avatar-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffd700, #b8860b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.player-info-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.player-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.level-badge {
+  background: #b8860b;
+  color: #000;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.mmo-player-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'Cinzel', serif;
+}
+
+.mmo-hp-bar-bg {
+  width: 100%;
+  height: 12px;
+  background: #1c1917;
+  border-radius: 6px;
+  border: 1px solid #444;
+  position: relative;
+  overflow: hidden;
+}
+
+.mmo-hp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  transition: width 0.3s ease;
+}
+
+.mmo-exp-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: #1c1917;
+  border-radius: 5px;
+  border: 1px solid #333;
+  position: relative;
+  overflow: hidden;
+}
+
+.mmo-exp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #eab308, #ca8a04);
+  transition: width 0.3s ease;
+}
+
+.mmo-bar-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 4px #000;
+  white-space: nowrap;
+}
+
+.mmo-yang-row {
+  font-size: 11px;
+  color: #ccc;
+  margin-top: 2px;
+}
+
+/* Inventario y Ranuras Metin2 */
+.inv-slot {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  background: rgba(18, 20, 30, 0.9);
+  border: 1px solid #444;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.inv-slot:hover {
+  border-color: #ffd700 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.35) !important;
+  background: rgba(30, 34, 52, 0.95);
+}
+
+.inv-slot:active {
+  transform: translateY(0);
+}
+
+/* Diálogo de NPC y Tienda */
+#npc-dialog-modal {
+  display: none;
+  box-sizing: border-box;
+}
+
+#inventory-modal {
+  box-sizing: border-box;
+}
+
+.btn-buy-item:hover {
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.6);
+  transform: scale(1.03);
+}
+
+.btn-claim-quest:hover {
+  box-shadow: 0 0 16px rgba(74, 222, 128, 0.7);
+  transform: scale(1.02);
+}
+
+/* Custom Scrollbar */
+#npc-dialog-content::-webkit-scrollbar,
+#quest-tracker-list::-webkit-scrollbar,
+.combat-log-messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+#npc-dialog-content::-webkit-scrollbar-track,
+#quest-tracker-list::-webkit-scrollbar-track,
+.combat-log-messages::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+#npc-dialog-content::-webkit-scrollbar-thumb,
+#quest-tracker-list::-webkit-scrollbar-thumb,
+.combat-log-messages::-webkit-scrollbar-thumb {
+  background: #b8860b;
+  border-radius: 3px;
+}
+
+/* =======================================================
+   AUTÉNTICA TASKBAR DE METIN2 (Estilo Oficial Nostálgico)
+   ======================================================= */
+#metin2-taskbar {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 56px;
+  background: linear-gradient(180deg, #2b2520 0%, #15120f 50%, #0d0b09 100%);
+  border: 2px solid #9a7332;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.95), 0 0 15px rgba(184, 134, 11, 0.25);
+  z-index: 50;
+  user-select: none;
+}
+
+/* Esferas de Cristal (HP / SP) */
+.metin2-orb {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid #d4af37;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9), 0 2px 8px rgba(0, 0, 0, 0.8);
+  background: #08080c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metin2-orb-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  transition: height 0.3s ease-out;
+}
+
+.metin2-orb-fill.hp-fill {
+  background: linear-gradient(180deg, #ef4444 0%, #b91c1c 70%, #7f1d1d 100%);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+}
+
+.metin2-orb-fill.sp-fill {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 70%, #0369a1 100%);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+}
+
+.metin2-orb-glass {
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  width: 32px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.05));
+  border-radius: 50% 50% 40% 40%;
+  pointer-events: none;
+}
+
+.metin2-orb-text {
+  position: relative;
+  z-index: 2;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 1px 1px 2px #000, 0 0 4px #000;
+}
+
+/* Grupo Central de Quickslots */
+.metin2-quickslot-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.metin2-slot {
+  width: 38px;
+  height: 38px;
+  background: radial-gradient(circle, #201a14 0%, #0b0907 100%);
+  border: 1.5px solid #8b6b32;
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.metin2-slot:hover {
+  border-color: #ffd700;
+  transform: translateY(-2px);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+}
+
+.slot-skill-img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.slot-key {
+  position: absolute;
+  bottom: 1px;
+  right: 2px;
+  font-size: 9px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 1px 1px 2px #000;
+}
+
+.slot-divider {
+  width: 2px;
+  height: 26px;
+  background: #5a452d;
+  margin: 0 2px;
+}
+
+/* Botones de Sistema Metin2 (C, I, L) */
+.metin2-sys-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.metin2-sys-btn {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(180deg, #423624, #241c10);
+  border: 1px solid #d4af37;
+  color: #ffd700;
+  font-weight: 900;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+  transition: all 0.1s ease;
+}
+
+.metin2-sys-btn:hover {
+  background: linear-gradient(180deg, #5c4b32, #382c1a);
+  border-color: #fff;
+  color: #fff;
+  transform: scale(1.08);
+}
+
+/* Yang y Bolas de EXP de Metin2 */
+.metin2-yang-exp-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-left: 4px;
+}
+
+.metin2-yang-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #ffd700;
+  font-family: 'Cinzel', serif;
+}
+
+.metin2-exp-spheres {
+  display: flex;
+  gap: 4px;
+}
+
+.exp-bulb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #8b6b32;
+  background: #14100b;
+}
+
+.exp-bulb.active {
+  background: radial-gradient(circle, #fef08a 20%, #eab308 80%, #a16207 100%);
+  box-shadow: 0 0 6px #eab308;
+}
+
+/* Marco de Dragón Dorado en el Radar / Minimapa */
+#minimap-radar-container {
+  overflow: visible !important;
+}
+
+#minimap-radar-container::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 166px;
+  height: 166px;
+  background: url('/assets/ui/minimap_frame.png') no-repeat center / contain;
+  pointer-events: none;
+  z-index: 48;
+}
+
+/* =======================================================
+   HOMESCREEN Y CREADOR DE PERSONAJE (DOTIN)
+   ======================================================= */
+#dotin-homescreen {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.94) 0%, rgba(5, 8, 16, 0.98) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: auto;
+  user-select: none;
+  font-family: 'Montserrat', sans-serif;
+  color: #fff;
+  padding: 20px;
+  pointer-events: auto;
+}
+
+.homescreen-logo-wrap {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.homescreen-logo {
+  max-width: 420px;
+  max-height: 140px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 25px rgba(234, 179, 8, 0.6)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.9));
+  animation: logoFloat 4s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.homescreen-subtitle {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+  margin-top: 4px;
+}
+
+/* Card del Login Provisional */
+#homescreen-login-card {
+  width: 380px;
+  background: linear-gradient(180deg, rgba(30, 35, 50, 0.95), rgba(16, 18, 28, 0.98));
+  border: 2px solid #b8860b;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 20px rgba(184, 134, 11, 0.3);
+  padding: 22px;
+}
+
+/* Creador de Personaje Dual (Ajustes + Preview 3D) */
+#homescreen-creator-card {
+  width: 820px;
+  background: linear-gradient(180deg, rgba(28, 32, 46, 0.98), rgba(14, 16, 25, 0.99));
+  border: 2px solid #eab308;
+  border-radius: 14px;
+  box-shadow: 0 14px 45px rgba(0, 0, 0, 0.95), 0 0 30px rgba(234, 179, 8, 0.35);
+  padding: 22px;
+  display: flex;
+  gap: 20px;
+}
+
+.creator-left-col {
+  flex: 1.1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.creator-right-col {
+  flex: 0.9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(20, 24, 38, 0.8) 0%, rgba(10, 12, 18, 0.95) 100%);
+  border: 1px solid #475569;
+  border-radius: 10px;
+  padding: 10px;
+  position: relative;
+}
+
+#char-creator-preview-container {
+  width: 280px;
+  height: 340px;
+  position: relative;
+}
+
+.creator-preview-hint {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.creator-option-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.creator-pill {
+  flex: 1;
+  padding: 7px 10px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid #475569;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.15s ease;
+}
+
+.creator-pill:hover {
+  border-color: #facc15;
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.creator-pill.selected {
+  border-color: #eab308;
+  background: linear-gradient(180deg, rgba(234, 179, 8, 0.25), rgba(161, 98, 7, 0.35));
+  color: #fef08a;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+}
+
+/* =======================================================
+   AUTÉNTICA TASKBAR DOFUS 1.29 / RETRO (Imagen 2)
+   ======================================================= */
+#dofus-taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  background: #d8c39e;
+  background: linear-gradient(180deg, #e4d3b4 0%, #d8c39e 40%, #c5ac83 100%);
+  border-top: 3px solid #5a3d24;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  z-index: 60;
+  user-select: none;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Sección Izquierda: Chat Dofus */
+#dofus-chat-section {
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  height: 148px;
+  background: rgba(248, 243, 230, 0.9);
+  border: 1.5px solid #7d5b36;
+  border-radius: 4px;
+  padding: 3px 6px;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.dofus-chat-filters {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 10px;
+  color: #4a341e;
+  border-bottom: 1px solid #d4c2a3;
+  padding-bottom: 2px;
+}
+
+.dofus-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 11px;
+  color: #2b1f13;
+  line-height: 1.4;
+  margin: 2px 0;
+  min-height: 90px;
+}
+
+.dofus-chat-messages::-webkit-scrollbar {
+  width: 4px;
+}
+.dofus-chat-messages::-webkit-scrollbar-thumb {
+  background: #a88d68;
+}
+
+.dofus-chat-input-row {
+  display: flex;
+  gap: 4px;
+}
+
+.dofus-chat-input {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #8c6a43;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #333;
+}
+
+/* Sección Central: Minimapa Circular con Corazón HP */
+#dofus-center-minimap-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 0px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 70;
+}
+
+.dofus-minimap-circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid #f2ead8;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.75), inset 0 0 10px rgba(0, 0, 0, 0.5);
+  background: #0f172a;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Corazón de HP Rojo Rubí Dofus 1.29 */
+#dofus-hp-heart {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 58px;
+  height: 38px;
+  background: radial-gradient(circle at 50% 30%, #ef4444 0%, #b91c1c 70%, #7f1d1d 100%);
+  border: 2px solid #581c87;
+  border-radius: 12px 12px 18px 18px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8), 0 0 8px rgba(239, 68, 68, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 75;
+}
+
+.dofus-heart-text-cur {
+  font-size: 11px;
+  font-weight: 900;
+  color: #1e1b4b;
+  line-height: 1;
+}
+
+.dofus-heart-text-max {
+  font-size: 11px;
+  font-weight: 900;
+  color: #1e3a8a;
+  line-height: 1;
+}
+
+/* Botones Radiales de Acción alrededor del Minimapa */
+.dofus-radial-actions {
+  position: absolute;
+  top: -12px;
+  left: 118px;
+  display: flex;
+  gap: 5px;
+  z-index: 72;
+}
+
+.dofus-radial-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #f59e0b 0%, #d97706 70%, #92400e 100%);
+  border: 2px solid #78350f;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.7), inset 0 1px 2px rgba(255,255,255,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  overflow: hidden;
+}
+
+.dofus-radial-btn img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+  pointer-events: none;
+}
+
+.dofus-radial-btn:hover {
+  transform: translateY(-2px) scale(1.1);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.8), 0 0 8px rgba(245, 158, 11, 0.8);
+  border-color: #ffd700;
+}
+
+/* Sección Derecha: Quickslots 2 Filas de 7 */
+#dofus-quickslots-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(234, 219, 193, 0.8);
+  border: 1.5px solid #7d5b36;
+  border-radius: 5px;
+  padding: 6px 12px;
+  height: 148px;
+}
+
+.dofus-quickslot-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 36px);
+  grid-template-rows: repeat(2, 36px);
+  gap: 5px;
+}
+
+.dofus-slot {
+  width: 34px;
+  height: 34px;
+  background: #f5eedb;
+  border: 1.5px solid #8c6a43;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);
+  transition: all 0.1s ease;
+}
+
+.dofus-slot:hover {
+  border-color: #d97706;
+  background: #fffdf5;
+}
+
+.dofus-slot.selected {
+  border-color: #2563eb;
+  background: #dbeafe;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.7);
+}
+
+/* Resaltado en combate: hechizo disponible (tengo PA) */
+.dofus-slot.combat-available {
+  border-color: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+  animation: pulse-green 1.2s infinite;
+}
+
+/* Hechizo sin PA */
+.dofus-slot.combat-no-ap {
+  opacity: 0.45;
+  filter: grayscale(60%);
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.5); }
+  50% { box-shadow: 0 0 12px rgba(34, 197, 94, 1); }
+}
+
+.dofus-slot-key {
+  position: absolute;
+  bottom: 1px;
+  right: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #78350f;
+}
+
+
+
+/* =======================================================
+   MODAL DE INVENTARIO DOFUS 1.29 (Imagen 2)
+   ======================================================= */
+#inventory-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 790px;
+  max-width: 95vw;
+  height: 475px;
+  max-height: calc(100vh - 175px);
+  background: #e5d5ba;
+  background: linear-gradient(180deg, #ebe0cc 0%, #dfceaF 100%);
+  border: 3px solid #543b22;
+  border-radius: 8px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9), inset 0 0 10px rgba(0, 0, 0, 0.15);
+  display: none;
+  flex-direction: row;
+  z-index: 105;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #3b2816;
+  box-sizing: border-box;
+}
+
+/* Botón de cierre retro para modales estilo Dofus */
+.dofus-modal-close-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: #c5a882;
+  border: 1.5px solid #633f1c;
+  color: #45260c;
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 120;
+  transition: all 0.15s ease;
+  line-height: 1;
+  padding: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.dofus-modal-close-btn:hover {
+  background: #e06c53;
+  color: #ffffff;
+  border-color: #8c2310;
+  transform: scale(1.08);
+}
+
+.dofus-inv-col-left {
+  width: 210px;
+  min-width: 210px;
+  max-width: 210px;
+  border-right: 2px solid #9c7b57;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(245, 238, 225, 0.5);
+  box-sizing: border-box;
+}
+
+.dofus-core-preview-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #5c3e21;
+  border-bottom: 1.5px solid #9c7b57;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+#dofus-core-preview-wrap {
+  flex: 1;
+  width: 100%;
+  height: 410px;
+  min-height: 380px;
+  background: radial-gradient(circle, #f8f3e8 0%, #e2d2b5 100%);
+  border: 1.5px solid #a68969;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.dofus-inv-col-center {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  border-right: 2px solid #9c7b57;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(238, 227, 209, 0.6);
+  box-sizing: border-box;
+}
+
+/* Paperdoll Silhouette & Gear Slots */
+.dofus-paperdoll-wrap {
+  display: flex;
+  gap: 8px;
+  position: relative;
+  height: 220px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid #b89c7d;
+  border-radius: 6px;
+  padding: 6px;
+}
+
+/* Columna de los 6 Huevos Dofus */
+.dofus-eggs-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 34px;
+}
+
+.dofus-egg-slot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 45% 45%;
+  background: #e2d4bc;
+  border: 1.5px solid #8a6c4c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Silueta y ranuras de equipamiento */
+.dofus-doll-silhouette {
+  flex: 1;
+  position: relative;
+  background: url('/assets/ui/paperdoll_bg.png') no-repeat center / contain;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 4px;
+  align-items: center;
+  justify-items: center;
+}
+
+.dofus-equip-slot {
+  width: 36px;
+  height: 36px;
+  background: rgba(245, 238, 225, 0.85);
+  border: 1.5px solid #7d5b36;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.dofus-equip-slot img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.dofus-item-detail-icon img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.dofus-equip-slot:hover {
+  border-color: #d97706;
+  background: #fff;
+}
+
+/* Yang & Pods */
+.dofus-kamas-pods-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  background: rgba(220, 203, 178, 0.9);
+  border: 1px solid #9c7b57;
+  border-radius: 4px;
+  margin: 6px 0;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.dofus-kamas-val {
+  color: #1e3a8a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dofus-pods-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.dofus-pods-bar-bg {
+  width: 90px;
+  height: 9px;
+  background: #fff;
+  border: 1px solid #7d5b36;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dofus-pods-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ea580c, #f97316);
+  width: 15%;
+}
+
+/* Tarjeta Detalle de Objeto (Parte inferior de columna centro) */
+.dofus-item-detail-card {
+  flex: 1;
+  background: #fbf8f0;
+  border: 1.5px solid #8c6a43;
+  border-radius: 5px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dofus-item-detail-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+  font-size: 11px;
+  color: #78350f;
+  border-bottom: 1px solid #d4c2a3;
+  padding-bottom: 2px;
+}
+
+.dofus-item-detail-body {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex: 1;
+}
+
+.dofus-item-detail-icon {
+  width: 48px;
+  height: 48px;
+  background: #eee3cb;
+  border: 1.5px solid #7d5b36;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.dofus-item-detail-stats {
+  flex: 1;
+  font-size: 10px;
+  color: #4a341e;
+  line-height: 1.3;
+}
+
+/* Columna Derecha: Rejilla 8x8 de Objetos */
+.dofus-inv-col-right {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(245, 238, 225, 0.4);
+}
+
+.dofus-inv-tabs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.dofus-category-icons {
+  display: flex;
+  gap: 4px;
+}
+
+.dofus-cat-icon {
+  width: 24px;
+  height: 24px;
+  background: #d4c2a3;
+  border: 1px solid #7d5b36;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dofus-cat-icon.selected {
+  background: #f5eedb;
+  border-color: #d97706;
+}
+
+.dofus-grid-8x8 {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  overflow-y: auto;
+  max-height: 380px;
+  padding-right: 4px;
+}
+
+.dofus-grid-slot {
+  aspect-ratio: 1;
+  background: #fbf8f0;
+  border: 1px solid #8c6a43;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.1s ease;
+}
+
+.dofus-grid-slot:hover {
+  background: #fff;
+  border-color: #d97706;
+}
+
+.dofus-grid-slot.selected {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+/* =======================================================
+   HUD DE RECOLECCIÓN (Menas, Árboles, Pesca)
+   ======================================================= */
+#gathering-hud {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background: linear-gradient(180deg, rgba(20, 24, 38, 0.96), rgba(10, 12, 18, 0.98));
+  border: 2px solid #eab308;
+  border-radius: 10px;
+  padding: 12px 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9), 0 0 15px rgba(234, 179, 8, 0.5);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 120;
+  user-select: none;
+}
+
+.gathering-title {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+}
+
+.gathering-bar-bg {
+  width: 100%;
+  height: 12px;
+  background: #111827;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gathering-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f59e0b, #eab308, #84cc16);
+  border-radius: 6px;
+  transition: width 0.05s linear;
+}
+
+.gathering-hint {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* =======================================================
+   MODAL DE SUBCLASES (Nivel 5)
+   ======================================================= */
+#subclass-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 580px;
+  background: linear-gradient(180deg, #1e2438 0%, #0d111d 100%);
+  border: 2px solid #ffd700;
+  border-radius: 14px;
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 215, 0, 0.4);
+  padding: 24px;
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  user-select: none;
+}
+
+.subclass-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.subclass-title {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffd700;
+}
+
+.subclass-subtitle {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-top: 4px;
+}
+
+.subclass-cards-wrap {
+  display: flex;
+  gap: 16px;
+}
+
+.subclass-card {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.7);
+  border: 2px solid #475569;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.subclass-card:hover {
+  border-color: #ffd700;
+  background: rgba(30, 41, 59, 0.9);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.35);
+}
+
+.subclass-card-icon {
+  font-size: 38px;
+  margin-bottom: 8px;
+}
+
+.subclass-card-name {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fef08a;
+  margin-bottom: 6px;
+}
+
+.subclass-card-desc {
+  font-size: 11px;
+  color: #cbd5e1;
+  text-align: center;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.subclass-skills-list {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.subclass-skill-badge {
+  padding: 3px 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #78350f;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #ffd700;
+}
+
+/* =========================================================================
+   Transición Cinematográfica Instantánea de Combate (Anime / Metin2 Slash)
+   ========================================================================= */
+#combat-transition-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.12s ease-out;
+}
+
+#combat-transition-overlay.combat-transition-hidden {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+#combat-transition-overlay.combat-transition-active {
+  display: flex !important;
+  opacity: 1 !important;
+}
+
+.combat-flash-flare {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(56, 189, 248, 0.45) 0%, rgba(15, 23, 42, 0.88) 75%, rgba(0, 0, 0, 0.96) 100%);
+  animation: flashFade 0.38s ease-out forwards;
+}
+
+.combat-slash-line {
+  position: absolute;
+  top: 50%;
+  left: -25%;
+  width: 150%;
+  height: 8px;
+  background: linear-gradient(90deg, transparent 0%, #ffffff 30%, #38bdf8 50%, #ffffff 70%, transparent 100%);
+  box-shadow: 0 0 30px #38bdf8, 0 0 60px #ffffff, 0 0 100px #0284c7;
+  transform: rotate(-22deg) scaleX(0);
+  transform-origin: center;
+}
+
+#combat-transition-overlay.combat-transition-active .combat-slash-line {
+  animation: swordSlashAnim 0.36s cubic-bezier(0.12, 0.95, 0.25, 1) forwards;
+}
+
+.combat-transition-badge {
+  position: relative;
+  font-family: 'Cinzel', serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: #ffd700;
+  letter-spacing: 4px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.9), 0 0 40px rgba(251, 191, 36, 0.6), 0 3px 8px rgba(0, 0, 0, 0.95);
+  transform: scale(0.65);
+  opacity: 0;
+}
+
+#combat-transition-overlay.combat-transition-active .combat-transition-badge {
+  animation: badgePopAnim 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes swordSlashAnim {
+  0% {
+    transform: rotate(-22deg) scaleX(0);
+    opacity: 0;
+  }
+  30% {
+    transform: rotate(-22deg) scaleX(1);
+    opacity: 1;
+  }
+  75% {
+    transform: rotate(-22deg) scaleX(1.15);
+    opacity: 0.9;
+  }
+  100% {
+    transform: rotate(-22deg) scaleX(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes badgePopAnim {
+  0% {
+    transform: scale(0.65);
+    opacity: 0;
+  }
+  28% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  72% {
+    transform: scale(1.0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+@keyframes flashFade {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
